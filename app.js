@@ -239,8 +239,9 @@
     card.appendChild(el("p", null, "아래 여섯 나라의 특징을 읽고, <b>두 진영</b>으로 나누어 보세요. 카드를 아래의 두 상자로 끌어다 놓으면 됩니다."));
 
     const layout = el("div", "m1-layout");
-    // 지도
+    // 유럽 SVG 지도 + 국가 이름 핀
     const mapWrap = el("div", "map-wrap");
+    mapWrap.innerHTML = MAPS.europe();
     m.countries.forEach((c) => {
       const pin = el("div", "map-pin");
       pin.dataset.id = c.id;
@@ -251,6 +252,14 @@
     });
     const mapCol = el("div");
     mapCol.appendChild(mapWrap);
+    mapCol.appendChild(el("p", "tiny muted", "🗺️ 국가를 분류하면 지도의 나라 영역이 진영 색으로 칠해집니다. (학습용 개략 지도)"));
+    // 지도 범례
+    const legend = el("div", "legend");
+    legend.innerHTML =
+      '<span><i style="background:#e2a19a"></i>진영 A</span>' +
+      '<span><i style="background:#9db8dc"></i>진영 B</span>' +
+      '<span><i style="background:#e6dcc0"></i>미분류</span>';
+    mapCol.appendChild(legend);
     layout.appendChild(mapCol);
 
     // 국가 카드 풀
@@ -346,14 +355,17 @@
   function updateM1Pins(card) {
     const m = D.mission1;
     m.countries.forEach((c) => {
-      const pin = card.parentElement.querySelector(`.map-pin[data-id="${c.id}"]`) ||
-        stage.querySelector(`.map-pin[data-id="${c.id}"]`);
-      if (!pin) return;
-      pin.classList.remove("alliance", "entente");
+      const pin = stage.querySelector(`.map-pin[data-id="${c.id}"]`);
+      const land = stage.querySelector(`.geo-map .land[data-country="${c.id}"]`);
+      if (pin) pin.classList.remove("alliance", "entente");
+      if (land) land.classList.remove("alliance", "entente");
       const inZone = card.querySelector(`.dz-items[data-zone] .country-card[data-id="${c.id}"]`);
       if (inZone) {
         const z = inZone.closest("[data-zone]").dataset.zone;
-        if (z === "alliance" || z === "entente") pin.classList.add(z);
+        if (z === "alliance" || z === "entente") {
+          if (pin) pin.classList.add(z);
+          if (land) land.classList.add(z);
+        }
       }
     });
   }
@@ -395,41 +407,95 @@
     const m = D.mission2;
     stage.appendChild(missionHeader(m));
 
-    // 단계별 실마리
-    const clueCard = el("div", "card");
-    clueCard.appendChild(el("h3", "serif", "📜 사건의 배경 실마리"));
-    clueCard.appendChild(el("p", "muted", "단계를 하나씩 열면서 앞으로 무슨 일이 벌어질지 추리해 보세요. (실마리 열람은 점수와 무관합니다.)"));
-    const stagesHost = el("div");
-    clueCard.appendChild(stagesHost);
+    // ---- 프로파일러 보드: 지도 + 단계별 단서 ----
+    const boardCard = el("div", "card");
+    boardCard.appendChild(el("h3", "serif", "🕵️ 사건 프로파일링 보드"));
+    boardCard.appendChild(el("p", "muted", "실마리를 한 단계씩 열 때마다 지도의 관련 지역이 강조됩니다. 흐름을 정리하며 다음에 벌어질 사건을 추리하세요."));
+
+    const profiler = el("div", "profiler");
+
+    // 왼쪽: 발칸 지도
+    const mapCol = el("div");
+    const balkanWrap = el("div", "balkan-map-wrap");
+    balkanWrap.innerHTML = MAPS.balkans();
+    mapCol.appendChild(balkanWrap);
+    const legend = el("div", "legend");
+    legend.innerHTML =
+      '<span><i style="background:#d9c48f"></i>오스트리아-헝가리</span>' +
+      '<span><i style="background:#e7b98c"></i>보스니아</span>' +
+      '<span><i style="background:#cdb0d4"></i>세르비아</span>' +
+      '<span><i style="background:#b9d0a6"></i>오스만 제국</span>';
+    mapCol.appendChild(legend);
+    profiler.appendChild(mapCol);
+
+    // 오른쪽: 단서 트랙
+    const clueCol = el("div");
+    const clueTrack = el("div", "clue-track");
+    clueCol.appendChild(clueTrack);
+    const openBtn = el("button", "btn btn-gold", "첫 번째 단서 열기 →");
+    const br = el("div", "actions"); br.appendChild(openBtn);
+    clueCol.appendChild(br);
+    profiler.appendChild(clueCol);
+    boardCard.appendChild(profiler);
+    stage.appendChild(boardCard);
+
+    function clearHighlights() {
+      boardCard.querySelectorAll(".geo-map.balkans .region.highlight").forEach((r) => r.classList.remove("highlight"));
+    }
+    function highlight(regions) {
+      (regions || []).forEach((rg) => {
+        const node = boardCard.querySelector(`.geo-map.balkans .region[data-region="${rg}"]`);
+        if (node) node.classList.add("highlight");
+      });
+    }
 
     let opened = 0;
-    const openBtn = el("button", "btn btn-gold", "첫 번째 실마리 열기 →");
     function renderStage() {
       const s = m.clueStages[opened];
-      const box = el("div", "reveal partial");
-      box.appendChild(el("h3", null, "🔓 " + esc(s.title)));
-      const grid = el("div", "evidence-grid");
-      s.clues.forEach((c) => grid.appendChild(el("div", "evi", esc(c))));
-      box.appendChild(grid);
-      stagesHost.appendChild(box);
+      const step = el("div", "clue-step");
+      step.appendChild(el("h4", null, "🔓 " + esc(s.title)));
+      const ul = el("ul");
+      s.clues.forEach((c) => ul.appendChild(el("li", null, esc(c))));
+      step.appendChild(ul);
+      if (s.deduce) step.appendChild(el("div", "deduce-note", "🧩 " + esc(s.deduce)));
+      clueTrack.appendChild(step);
+      clearHighlights();
+      highlight(s.highlight);
       opened++;
       if (opened >= m.clueStages.length) {
         openBtn.disabled = true;
-        openBtn.textContent = "모든 실마리를 확인했어요";
+        openBtn.textContent = "모든 단서를 확인했어요";
       } else {
-        openBtn.textContent = `다음 실마리 열기 (${opened}/${m.clueStages.length}) →`;
+        openBtn.textContent = `다음 단서 열기 (${opened}/${m.clueStages.length}) →`;
       }
     }
     openBtn.addEventListener("click", renderStage);
-    const br = el("div", "actions"); br.appendChild(openBtn);
-    clueCard.appendChild(br);
     renderStage(); // 첫 단계 자동 공개
-    stage.appendChild(clueCard);
 
-    // 예언 입력
+    // ---- 프로파일러 지목: 표적 인물 찾기 ----
+    const culCard = el("div", "card");
+    culCard.appendChild(el("h3", "serif", "🎯 프로파일러의 지목"));
+    culCard.appendChild(el("p", "muted", esc(m.culprit.question)));
+    const cList = el("div", "choice-list");
+    let pickedCulprit = null;
+    m.culprit.options.forEach((o) => {
+      const b = el("button", "choice", esc(o.text));
+      b.dataset.id = o.id;
+      b.addEventListener("click", () => {
+        if (pickedCulprit && pickedCulprit.locked) return;
+        cList.querySelectorAll(".choice").forEach((n) => n.classList.remove("selected"));
+        b.classList.add("selected");
+        pickedCulprit = o;
+      });
+      cList.appendChild(b);
+    });
+    culCard.appendChild(cList);
+    stage.appendChild(culCard);
+
+    // ---- 예언 기록장 ----
     const predCard = el("div", "card");
     predCard.appendChild(el("h3", "serif", "✍️ 나의 예언 기록장"));
-    predCard.appendChild(el("p", "muted", "실마리를 종합해 다음 칸을 채워 예언을 완성하세요."));
+    predCard.appendChild(el("p", "muted", "지금까지 정리한 흐름을 종합해 다음 칸을 채워 예언을 완성하세요."));
     const grid = el("div", "slot-grid");
     const inputs = {};
     m.predictionSlots.forEach((s) => {
@@ -454,33 +520,61 @@
     predCard.appendChild(resultHost);
 
     submit.addEventListener("click", () => {
+      if (!pickedCulprit) {
+        toast("먼저 위쪽 '프로파일러의 지목'에서 표적 인물을 골라 주세요.");
+        return;
+      }
       const vals = {};
       Object.keys(inputs).forEach((k) => (vals[k] = inputs[k].value.trim()));
       if (Object.values(vals).some((v) => v.length === 0)) {
-        toast("네 칸을 모두 채워야 예언을 제출할 수 있어요.");
+        toast("예언 기록장 네 칸을 모두 채워야 제출할 수 있어요.");
         return;
       }
-      // 키워드 부분 일치로 판정
+      submit.disabled = true;
+      pickedCulprit.locked = true;
+
+      // 지목 채점: 정답 표시
+      cList.querySelectorAll(".choice").forEach((n) => {
+        const o = m.culprit.options.find((x) => x.id === n.dataset.id);
+        n.classList.remove("selected");
+        if (o.correct) n.classList.add("correct");
+        else if (n.dataset.id === pickedCulprit.id) n.classList.add("wrong");
+      });
+
+      // 예언 키워드 채점
       let hit = 0;
       Object.keys(m.keywords).forEach((k) => {
         if (m.keywords[k].some((w) => vals[k].includes(w))) hit++;
       });
-      submit.disabled = true;
-      state.solved.mission2 = true;
       const total = Object.keys(m.keywords).length;
-      // 4점 만점: 키워드 일치 비율로 기본점 산정 후 힌트 차감
-      const base = Math.max(2, Math.round((hit / total) * 4));
+
+      state.solved.mission2 = true;
+      // 4점: 표적 지목 정답 1점 + 예언 키워드 최대 3점
+      const culpritScore = pickedCulprit.correct ? 1 : 0;
+      const predScore = Math.round((hit / total) * 3);
+      const base = Math.max(2, culpritScore + predScore);
       const gained = scoreFor("mission2", base);
       state.scores.mission2 = gained;
       renderTopbar();
 
-      const matched = hit === total;
+      // 지도에 사라예보 발화점 표시
+      const spark = boardCard.querySelector(".geo-map.balkans .spark");
+      const cityLbl = boardCard.querySelector(".geo-map.balkans .city-label");
+      if (spark) spark.classList.add("show");
+      if (cityLbl) cityLbl.classList.add("show");
+      clearHighlights();
+      highlight(["bosnia"]);
+
+      const matched = pickedCulprit.correct && hit === total;
       resultHost.appendChild(
         revealPanel({
-          verdict: matched ? "🎯 사라예보 사건을 정확히 예언했습니다!" : `🔎 예언 완료 · 핵심 단서 ${hit}/${total}개 적중`,
+          verdict: matched
+            ? "🎯 사라예보 사건을 정확히 예언했습니다!"
+            : `🔎 예언 완료 · 표적 ${pickedCulprit.correct ? "적중" : "오답"} · 예언 단서 ${hit}/${total}개 적중`,
           cls: matched ? "correct" : "partial",
           gained,
           blocks: [
+            { h: "프로파일러 결론", t: esc(pickedCulprit.correct ? m.culprit.feedbackRight : m.culprit.feedbackWrong) },
             { h: "실제로 일어난 사건", t: esc(m.answerEvent) },
             { h: "역사 해설", t: esc(m.explanation) },
           ],
@@ -529,9 +623,12 @@
     card.appendChild(el("hr", "soft"));
     const kf = el("div", "field");
     kf.appendChild(el("label", null, "🗝️ 이 전쟁을 대표하는 두 키워드는?"));
+    kf.appendChild(el("p", "tiny muted",
+      "힌트: 첫 번째는 병사들이 땅을 파고 버티는 도랑 '참호'와 관련된 '참□전', " +
+      "두 번째는 나라의 모든 힘을 쏟는 '총□전'입니다."));
     const krow = el("div", "keyword-row");
-    const k1 = el("input"); k1.type = "text"; k1.placeholder = "첫 번째 키워드 (예: ○○전)";
-    const k2 = el("input"); k2.type = "text"; k2.placeholder = "두 번째 키워드 (예: ○○전)";
+    const k1 = el("input"); k1.type = "text"; k1.placeholder = "참 □ 전 (땅을 파고 대치)";
+    const k2 = el("input"); k2.type = "text"; k2.placeholder = "총 □ 전 (나라 전체를 동원)";
     krow.appendChild(k1); krow.appendChild(k2);
     kf.appendChild(krow);
     card.appendChild(kf);
@@ -610,8 +707,24 @@
     const m = D.mission4;
     stage.appendChild(missionHeader(m));
 
+    // ---- 학습 카드: 미국은 왜 참전했고, 독일은 왜 휴전했나 ----
+    const learnCard = el("div", "card");
+    learnCard.appendChild(el("h3", "serif", "📚 먼저 알아보기: 전쟁이 끝난 이유"));
+    learnCard.appendChild(el("p", "muted", "순서를 배열하기 전에, 미국이 왜 참전했고 독일이 왜 휴전했는지 먼저 읽어 보세요."));
+    const why = D.mission4.whyLearning;
+    const whyGrid = el("div", "why-grid");
+    const usa = el("div", "why-card");
+    usa.appendChild(el("h5", null, why.usa.title));
+    const ul1 = el("ul"); why.usa.points.forEach((p) => ul1.appendChild(el("li", null, esc(p)))); usa.appendChild(ul1);
+    const de = el("div", "why-card de");
+    de.appendChild(el("h5", null, why.germany.title));
+    const ul2 = el("ul"); why.germany.points.forEach((p) => ul2.appendChild(el("li", null, esc(p)))); de.appendChild(ul2);
+    whyGrid.appendChild(usa); whyGrid.appendChild(de);
+    learnCard.appendChild(whyGrid);
+    stage.appendChild(learnCard);
+
     const card = el("div", "card");
-    card.appendChild(el("p", null, "전쟁이 끝나는 흐름이 뒤섞여 있습니다. 카드를 끌어 올바른 <b>시간·인과 순서</b>로 배열하세요."));
+    card.appendChild(el("p", null, "이제 전쟁이 끝나는 흐름이 뒤섞여 있습니다. 카드를 끌어 올바른 <b>시간·인과 순서</b>로 배열하세요."));
 
     const list = el("div", "order-list");
     shuffle(m.causeCards).forEach((c) => list.appendChild(orderItem(c)));
@@ -898,13 +1011,58 @@
     fCard.appendChild(out);
 
     build.addEventListener("click", () => {
-      const values = fills.map((f) => (f.value.trim() || f.dataset.suggest));
+      // 각 빈칸 채점: 입력이 accept 키워드 중 하나라도 포함하면 정답
+      const results = fills.map((f, i) => {
+        const raw = f.value.trim();
+        const blank = tmpl.blanks[i];
+        const accept = blank.accept || [blank.suggest];
+        const ok = raw.length > 0 && accept.some((w) => raw.includes(w));
+        return { raw, ok, blank };
+      });
+
+      // 보고서 본문은 정답인 칸은 학생 답, 오답/빈칸은 추천 정답으로 채움
       let text = tmpl.text;
-      values.forEach((v, i) => (text = text.replace(`{${i}}`, v)));
+      results.forEach((r, i) => {
+        const filled = r.ok ? r.raw : r.blank.suggest;
+        text = text.replace(`{${i}}`, filled);
+      });
+
+      // 입력칸에 정답/오답 색 표시
+      fills.forEach((f, i) => {
+        f.classList.remove("ok-fill", "wrong-fill");
+        f.classList.add(results[i].ok ? "ok-fill" : "wrong-fill");
+      });
+
       out.innerHTML = "";
+      const correctCount = results.filter((r) => r.ok).length;
+
       const report = el("div", "report-out");
-      report.textContent = "🕯️ 전쟁 예언자의 최종 보고서\n\n" + text + "\n\n— " + e.coreMessage;
+      report.textContent =
+        "🕯️ 전쟁 예언자의 최종 보고서\n\n" + text + "\n\n— " + e.coreMessage;
       out.appendChild(report);
+
+      // 채점 요약
+      out.appendChild(el("p", null, `<b>${correctCount}/${results.length}</b> 칸을 스스로 맞혔어요.`));
+
+      // 틀리거나 비운 칸이 있으면 정답을 알려 준다
+      const wrong = results.filter((r) => !r.ok);
+      if (wrong.length > 0) {
+        const fix = el("div", "answer-fix");
+        fix.appendChild(el("div", null, "📌 아래 칸은 이렇게 채우면 정확해요:"));
+        const ul = el("ul");
+        ul.style.margin = "8px 0 0";
+        results.forEach((r, i) => {
+          if (!r.ok) {
+            const yours = r.raw.length ? `내 답: “${esc(r.raw)}”` : "내 답: (비어 있음)";
+            ul.appendChild(el("li", null, `<b>${esc(r.blank.hint)}</b> → 정답 예시: <b>${esc(r.blank.suggest)}</b> <span class="tiny muted">(${yours})</span>`));
+          }
+        });
+        fix.appendChild(ul);
+        out.appendChild(fix);
+      } else {
+        out.appendChild(el("div", "answer-fix", "🎉 모든 칸을 정확히 채웠습니다. 완벽한 예언 보고서예요!"));
+      }
+
       out.appendChild(nextButton("epilogue", "예언 결과 확인하기 →"));
       out.scrollIntoView({ behavior: "smooth", block: "center" });
     });
