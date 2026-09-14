@@ -230,18 +230,28 @@
      공통 상호작용 헬퍼 (탭/터치 기반, 드래그 없음)
      ======================================================================= */
 
-  // 탭 분류: 카드를 탭해 선택 → 목표 상자를 탭해 담기. 담긴 카드를 탭하면 풀로 복귀.
+  // 카드 분류: 데스크톱은 드래그 앤 드롭, 모바일은 탭(카드 탭 → 상자 탭).
   // items: [{id, html}]  zones: [{key, label}]  onChange(): 상태 변화 콜백
   // 반환: { getPlacement(): {id: zoneKey|null}, placeAll(map), lock() }
   function tapClassifier(host, items, zones, opts) {
     opts = opts || {};
     let selectedId = null;
     let locked = false;
+    let draggedId = null;
     const placement = {}; // id -> zoneKey (없으면 풀)
     items.forEach((it) => (placement[it.id] = null));
 
+    const desktopMode = typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(min-width: 641px)").matches
+      : false;
+
+    const defaultHint = desktopMode
+      ? "카드를 상자로 끌어다 놓아 분류하세요. (담긴 카드를 다시 풀로 끌어 꺼낼 수 있어요)"
+      : "① 아래 카드를 하나 탭해 고르고 ② 담을 상자를 탭하세요. (담긴 카드를 다시 탭하면 꺼냅니다)";
+
     const pool = el("div", "tap-pool");
-    const poolTitle = el("p", "pool-hint", opts.poolHint || "① 아래 카드를 하나 탭해 고르고 ② 담을 상자를 탭하세요.");
+    pool.dataset.zone = "__pool__";
+    const poolTitle = el("p", "pool-hint", opts.poolHint || defaultHint);
     host.appendChild(poolTitle);
     host.appendChild(pool);
 
@@ -253,26 +263,68 @@
       const inner = el("div", "tap-zone-items");
       box.appendChild(inner);
       zoneEls[z.key] = { box, inner };
+      // 모바일: 상자 탭으로 담기
       box.addEventListener("click", () => {
-        if (locked) return;
+        if (locked || desktopMode) return;
         if (!selectedId) { toast("먼저 위에서 카드를 하나 탭해 고르세요."); return; }
         placement[selectedId] = z.key;
         selectedId = null;
         render();
         if (opts.onChange) opts.onChange();
       });
+      // 데스크톱: 상자로 드롭
+      attachDropZone(box, z.key);
       zoneWrap.appendChild(box);
     });
     host.appendChild(zoneWrap);
 
+    // 풀(원위치)도 드롭 대상 → 담긴 카드를 다시 꺼내기
+    attachDropZone(pool, null);
+
+    function attachDropZone(elm, zoneKey) {
+      if (!desktopMode) return;
+      elm.addEventListener("dragover", (ev) => {
+        if (locked || !draggedId) return;
+        ev.preventDefault();
+        elm.classList.add("drop-target");
+      });
+      elm.addEventListener("dragleave", (ev) => {
+        if (!elm.contains(ev.relatedTarget)) elm.classList.remove("drop-target");
+      });
+      elm.addEventListener("drop", (ev) => {
+        if (locked || !draggedId) return;
+        ev.preventDefault();
+        elm.classList.remove("drop-target");
+        placement[draggedId] = zoneKey;
+        draggedId = null;
+        render();
+        if (opts.onChange) opts.onChange();
+      });
+    }
+
     function makeCard(it, inZone) {
       const c = el("div", "tap-card" + (inZone ? " placed" : "") + (selectedId === it.id ? " selected" : ""));
       c.innerHTML = it.html;
+
+      if (desktopMode && !locked) {
+        c.draggable = true;
+        c.addEventListener("dragstart", (ev) => {
+          draggedId = it.id;
+          c.classList.add("dragging");
+          if (ev.dataTransfer) { ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", it.id); }
+        });
+        c.addEventListener("dragend", () => {
+          c.classList.remove("dragging");
+          draggedId = null;
+          host.querySelectorAll(".drop-target").forEach((n) => n.classList.remove("drop-target"));
+        });
+      }
+
+      // 모바일: 탭으로 선택/복귀
       c.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        if (locked) return;
+        if (locked || desktopMode) return;
         if (inZone) {
-          // 담긴 카드를 탭 → 풀로 복귀
           placement[it.id] = null;
           selectedId = null;
           render();
@@ -284,6 +336,7 @@
       });
       return c;
     }
+
     function render() {
       pool.innerHTML = "";
       Object.values(zoneEls).forEach((z) => (z.inner.innerHTML = ""));
@@ -292,7 +345,12 @@
         if (z && zoneEls[z]) zoneEls[z].inner.appendChild(makeCard(it, true));
         else pool.appendChild(makeCard(it, false));
       });
-      if (pool.children.length === 0) pool.appendChild(el("p", "tiny muted", "모든 카드를 분류했어요. 담긴 카드를 탭하면 다시 꺼낼 수 있어요."));
+      if (pool.children.length === 0) {
+        pool.appendChild(el("p", "tiny muted",
+          desktopMode
+            ? "모든 카드를 분류했어요. 담긴 카드를 이 영역으로 끌면 다시 꺼낼 수 있어요."
+            : "모든 카드를 분류했어요. 담긴 카드를 탭하면 다시 꺼낼 수 있어요."));
+      }
     }
     render();
 
@@ -523,7 +581,6 @@
     ];
 
     const clf = tapClassifier(card, shuffleItems(items), zones, {
-      poolHint: "① 국가 카드를 탭해 고르고 ② 담을 진영 상자를 탭하세요. (담긴 카드를 다시 탭하면 꺼냅니다)",
       onChange: () => paintMap(),
     });
     function shuffleItems(list) { return shuffle(list); }
@@ -762,9 +819,7 @@
     const zones = Object.keys(m.categories).map((cat) => ({
       key: cat, label: m.categories[cat].icon + " " + m.categories[cat].label,
     }));
-    const clf = tapClassifier(card, shuffle(items), zones, {
-      poolHint: "① 카드를 탭해 고르고 ② 담을 범주를 탭하세요.",
-    });
+    const clf = tapClassifier(card, shuffle(items), zones, {});
 
     card.appendChild(el("hr", "soft"));
     const kf = el("div", "field");
@@ -865,7 +920,7 @@
     stage.appendChild(learnCard);
 
     const card = el("div", "card");
-    card.appendChild(el("p", null, "전쟁이 끝나는 흐름이 뒤섞여 있습니다. ▲▼ 버튼으로 올바른 <b>시간·인과 순서</b>로 배열하세요."));
+    card.appendChild(el("p", null, "전쟁이 끝나는 흐름이 뒤섞여 있습니다. 올바른 <b>시간·인과 순서</b>로 배열하세요."));
     const arrangement = state.solved.mission4
       ? m.causeCards.slice().sort((a, b) => a.order - b.order)
       : shuffle(m.causeCards);
@@ -1027,7 +1082,7 @@
     // 활동 1: 사건 시간순 배열 (탭 ▲▼)
     const tCard = el("div", "card");
     tCard.appendChild(el("h3", "serif", "① 사건 카드 시간순 배열"));
-    tCard.appendChild(el("p", "muted", "아홉 개의 사건을 일어난 순서대로 ▲▼ 버튼으로 배열하세요."));
+    tCard.appendChild(el("p", "muted", "아홉 개의 사건을 일어난 순서대로 배열하세요."));
     const tOrderer = tapOrderList(tCard, shuffle(e.timelineCards));
     const tActions = el("div", "actions");
     tActions.appendChild(el("div", "spacer"));

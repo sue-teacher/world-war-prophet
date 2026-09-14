@@ -636,6 +636,7 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   flex-wrap: wrap;
   gap: 10px;
   margin: 8px 0 16px;
+  min-height: 48px;
 }
 .tap-card {
   background: var(--paper);
@@ -754,4 +755,19 @@ input, textarea { font-size: 16px; } /* iOS 자동 확대 방지 */
 @media (max-width: 640px) {
   .order-item { cursor: default; }
   .order-item.drag-over { box-shadow: none; }
+}
+
+/* 카드 분류 환경별 조작 */
+.tap-card[draggable="true"] { cursor: grab; }
+.tap-card[draggable="true"]:active { cursor: grabbing; }
+.tap-card.dragging { opacity: .45; }
+.tap-zone.drop-target {
+  border-style: solid;
+  border-color: var(--gold);
+  background: rgba(184,134,11,0.12);
+}
+.tap-pool.drop-target {
+  outline: 2px dashed var(--gold);
+  outline-offset: 4px;
+  border-radius: 10px;
 }
