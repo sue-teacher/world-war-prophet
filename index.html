@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>전쟁 예언자 · 제1차 세계대전</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 상단 진행 바 -->
+  <header class="topbar" id="topbar" hidden>
+    <div class="topbar-inner">
+      <button class="brand" id="homeBtn" title="처음으로">🕯️ 전쟁 예언자</button>
+      <nav class="steps" id="stepNav" aria-label="미션 진행"></nav>
+      <div class="score-badge" id="scoreBadge" title="예언 점수">
+        <span class="score-star">⭐</span>
+        <span id="scoreValue">0</span><span class="score-max">/20</span>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </header>
+
+  <!-- 화면이 그려지는 무대 -->
+  <main id="stage" class="stage" aria-live="polite"></main>
+
+  <!-- 토스트 알림 -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
