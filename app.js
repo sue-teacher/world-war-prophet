@@ -303,13 +303,18 @@
     };
   }
 
-  // 탭 순서 배열: 위/아래 버튼으로 순서를 바꾸는 리스트. 모바일에서 안정적.
+  // 순서 배열: 데스크톱은 드래그 앤 드롭, 모바일은 ▲▼ 버튼.
   // cards: [{id, text, order}]
   // 반환: { getOrderIds(), markResult(), lock(), setOrder(ids) }
   function tapOrderList(host, cards) {
     let locked = false;
-    let arr = cards.slice(); // 현재 표시 순서
+    let arr = cards.slice();
     const listEl = el("div", "order-list");
+    const desktopMode = typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(min-width: 641px)").matches
+      : false;
+    let draggedId = null;
+
     host.appendChild(listEl);
 
     function move(i, dir) {
@@ -318,13 +323,24 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
       render();
     }
+
     function render() {
       listEl.innerHTML = "";
       arr.forEach((c, i) => {
         const it = el("div", "order-item" + (c._ok ? " ok" : "") + (c._bad ? " bad" : ""));
+        it.dataset.id = c.id;
         it.appendChild(el("span", "num", String(i + 1)));
         it.appendChild(el("span", "txt", esc(c.text)));
-        if (!locked) {
+
+        if (!locked && desktopMode) {
+          it.draggable = true;
+          const grip = el("span", "order-grip", "⠿");
+          grip.setAttribute("aria-label", "카드를 끌어 순서를 바꾸세요");
+          grip.title = "카드를 끌어 순서를 바꾸세요";
+          it.appendChild(grip);
+        }
+
+        if (!locked && !desktopMode) {
           const ctrl = el("div", "order-ctrl");
           const up = el("button", "ord-btn", "▲");
           up.setAttribute("aria-label", "위로");
@@ -334,27 +350,85 @@
           dn.setAttribute("aria-label", "아래로");
           dn.disabled = i === arr.length - 1;
           dn.addEventListener("click", () => move(i, 1));
-          ctrl.appendChild(up); ctrl.appendChild(dn);
+          ctrl.appendChild(up);
+          ctrl.appendChild(dn);
           it.appendChild(ctrl);
         }
         listEl.appendChild(it);
       });
     }
+
+    // 데스크톱 전용 드래그 앤 드롭 이벤트
+    listEl.addEventListener("dragstart", (event) => {
+      if (locked || !desktopMode) return;
+      const item = event.target.closest(".order-item");
+      if (!item) return;
+      draggedId = item.dataset.id;
+      item.classList.add("dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", draggedId);
+      }
+    });
+
+    listEl.addEventListener("dragend", (event) => {
+      const item = event.target.closest(".order-item");
+      if (item) item.classList.remove("dragging");
+      draggedId = null;
+      listEl.querySelectorAll(".drag-over").forEach((node) => node.classList.remove("drag-over"));
+    });
+
+    listEl.addEventListener("dragover", (event) => {
+      if (locked || !desktopMode || !draggedId) return;
+      event.preventDefault();
+      const target = event.target.closest(".order-item");
+      if (!target || target.dataset.id === draggedId) return;
+      listEl.querySelectorAll(".drag-over").forEach((node) => node.classList.remove("drag-over"));
+      target.classList.add("drag-over");
+    });
+
+    listEl.addEventListener("dragleave", (event) => {
+      const target = event.target.closest(".order-item");
+      if (target && !target.contains(event.relatedTarget)) target.classList.remove("drag-over");
+    });
+
+    listEl.addEventListener("drop", (event) => {
+      if (locked || !desktopMode || !draggedId) return;
+      event.preventDefault();
+      const target = event.target.closest(".order-item");
+      if (!target || target.dataset.id === draggedId) return;
+      const from = arr.findIndex((card) => card.id === draggedId);
+      const to = arr.findIndex((card) => card.id === target.dataset.id);
+      if (from < 0 || to < 0) return;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      draggedId = null;
+      render();
+    });
+
     render();
 
     return {
       getOrderIds: () => arr.map((c) => c.id),
       markResult: () => {
         let ok = 0;
-        arr.forEach((c, i) => { const good = c.order === i + 1; c._ok = good; c._bad = !good; if (good) ok++; });
+        arr.forEach((c, i) => {
+          const good = c.order === i + 1;
+          c._ok = good;
+          c._bad = !good;
+          if (good) ok++;
+        });
         render();
         return ok;
       },
-      lock: () => { locked = true; arr.forEach((c) => { c._ok = true; c._bad = false; }); render(); },
+      lock: () => {
+        locked = true;
+        arr.forEach((c) => { c._ok = true; c._bad = false; });
+        render();
+      },
       setOrder: (ids) => {
         if (!ids || !ids.length) return;
         arr = ids.map((id) => cards.find((c) => c.id === id)).filter(Boolean);
-        // 누락 방지
         cards.forEach((c) => { if (!arr.includes(c)) arr.push(c); });
         render();
       },

@@ -734,3 +734,24 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 /* 터치 대상 최소 크기 보장 */
 .choice { min-height: 48px; }
 input, textarea { font-size: 16px; } /* iOS 자동 확대 방지 */
+
+/* 순서 배열 환경별 조작 */
+.order-item[draggable="true"] { cursor: grab; user-select: none; }
+.order-item[draggable="true"]:active { cursor: grabbing; }
+.order-item.drag-over {
+  border-color: var(--gold);
+  box-shadow: 0 -3px 0 var(--gold);
+}
+.order-grip {
+  margin-left: auto;
+  color: var(--gold);
+  font-size: 1.45rem;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: grab;
+  letter-spacing: -0.2em;
+}
+@media (max-width: 640px) {
+  .order-item { cursor: default; }
+  .order-item.drag-over { box-shadow: none; }
+}
