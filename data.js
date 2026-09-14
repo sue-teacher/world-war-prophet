@@ -372,6 +372,20 @@ const GAME_DATA = {
       { id: "t8", text: "동맹국의 항복", order: 8 },
       { id: "t9", text: "베르사유 체제 성립", order: 9 },
     ],
+    // 활동 2: 원인과 결과 사슬 — 학생이 순서대로 배열하는 참여 활동
+    causalChain: {
+      intro: "하나의 원인이 다음 결과를 부르고, 그 결과가 또 다른 원인이 됩니다. 사슬을 올바른 순서로 이어 보세요.",
+      cards: [
+        { id: "ch1", text: "동맹 대립과 민족주의", order: 1 },
+        { id: "ch2", text: "한 지역의 분쟁이 국제전으로 확대", order: 2 },
+        { id: "ch3", text: "전쟁 장기화", order: 3 },
+        { id: "ch4", text: "총력전과 민간인 동원", order: 4 },
+        { id: "ch5", text: "사회·경제적 피로 누적", order: 5 },
+        { id: "ch6", text: "미국 참전과 동맹국 붕괴", order: 6 },
+        { id: "ch7", text: "전쟁 종결", order: 7 },
+        { id: "ch8", text: "불안정한 평화", order: 8 },
+      ],
+    },
     // 활동 3: 최종 예언문 빈칸
     finalTemplate: {
       text:
@@ -381,11 +395,14 @@ const GAME_DATA = {
       blanks: [
         { hint: "시작 원인", suggest: "동맹 대립과 민족주의", accept: ["동맹", "민족", "제국주의", "군비"] },
         { hint: "직접 계기", suggest: "사라예보", accept: ["사라예보"] },
-        { hint: "전쟁 특징 1", suggest: "참호전", accept: ["참호"] },
-        { hint: "전쟁 특징 2", suggest: "총력전", accept: ["총력"] },
+        // 전쟁 특징 1·2는 '참호전'과 '총력전' 둘 다 허용 (순서 무관)
+        { hint: "전쟁 특징 1", suggest: "참호전", accept: ["참호", "총력"] },
+        { hint: "전쟁 특징 2", suggest: "총력전", accept: ["참호", "총력"] },
         { hint: "종전에 영향을 준 나라", suggest: "미국", accept: ["미국"] },
         { hint: "평화의 한계", suggest: "독일의 불만과 국제연맹의 한계", accept: ["독일", "국제연맹", "불만", "배상"] },
       ],
+      // 순서 무관 정답 그룹: 이 인덱스들끼리는 서로 답이 바뀌어도 정답
+      swapGroups: [[2, 3]],
     },
     coreMessage:
       "전쟁은 한 사건만으로 일어나지 않는다. 여러 갈등이 쌓이고, 하나의 사건이 그 갈등을 폭발시키며, 전쟁의 결과는 이후의 세계 질서까지 바꾼다.",

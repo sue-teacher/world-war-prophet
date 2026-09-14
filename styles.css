@@ -596,3 +596,129 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 .answer-fix b { color: var(--green); }
 .fill.wrong-fill { border-bottom-color: var(--red-soft); background: rgba(192,57,43,0.08); }
 .fill.ok-fill { border-bottom-color: var(--green); background: rgba(63,125,78,0.10); }
+
+/* =========================================================================
+   모바일 최적화: 탭 상호작용 + Leaflet(OSM) 지도
+   ========================================================================= */
+
+/* Leaflet 지도 컨테이너 */
+.leaflet-map {
+  height: 340px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 6px;
+  background: #dfeaf0;
+  z-index: 0;
+}
+/* 지도 위 국가 이름 라벨(툴팁) */
+.leaflet-tooltip.map-name-label {
+  background: rgba(251, 246, 233, 0.95);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 700;
+  font-family: "Noto Sans KR", sans-serif;
+  font-size: 0.82rem;
+  padding: 2px 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.leaflet-tooltip.map-name-label.spark-label {
+  background: #a4342a;
+  color: #fff;
+  border-color: #7d271f;
+}
+
+/* 탭 분류: 카드 풀 */
+.tap-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 8px 0 16px;
+}
+.tap-card {
+  background: var(--paper);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  min-height: 44px;
+  transition: border-color .15s, background .15s, transform .1s;
+  flex: 1 1 220px;
+}
+.tap-card:active { transform: scale(0.98); }
+.tap-card.selected {
+  border-color: var(--gold);
+  background: rgba(184,134,11,0.12);
+  box-shadow: 0 0 0 3px rgba(217,179,80,0.25);
+}
+.tap-card h4, .tap-card b { display: block; margin: 0 0 4px; }
+.tap-card ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--ink-soft); }
+.tap-card.placed { background: #fff; border-style: solid; }
+
+/* 탭 분류: 목표 상자 */
+.tap-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px){ .tap-zones { grid-template-columns: 1fr; } }
+.tap-zone {
+  min-height: 96px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.45);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.tap-zone:hover { background: rgba(255,255,255,0.75); }
+.tap-zone.alliance { border-color: rgba(192,57,43,0.55); }
+.tap-zone.entente { border-color: rgba(44,111,187,0.55); }
+.tap-zone h4 { margin: 0 0 8px; }
+.tap-zone.alliance h4 { color: var(--red); }
+.tap-zone.entente h4 { color: var(--blue); }
+.tap-zone-items { display: flex; flex-direction: column; gap: 8px; }
+
+/* 순서 배열: ▲▼ 컨트롤 */
+.order-item { align-items: center; }
+.order-ctrl { margin-left: auto; display: flex; gap: 6px; }
+.ord-btn {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--ink);
+  line-height: 1;
+}
+.ord-btn:active { background: var(--paper-2); }
+.ord-btn:disabled { opacity: .35; cursor: not-allowed; }
+.order-item .txt { flex: 1; }
+
+/* =========================================================================
+   반응형 (모바일)
+   ========================================================================= */
+@media (max-width: 640px) {
+  .stage { padding: 16px 12px 72px; }
+  .card { padding: 18px 16px; }
+  .mission-title { font-size: 1.5rem; }
+  .hero h1 { font-size: 2rem; }
+  .hero { padding: 26px 16px; }
+  .topbar-inner { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+  .brand { font-size: 0.95rem; }
+  .step-dot { width: 28px; height: 28px; }
+  .leaflet-map { height: 260px; }
+  .actions { flex-direction: column-reverse; align-items: stretch; }
+  .actions .spacer { display: none; }
+  .btn { width: 100%; padding: 14px 18px; }
+  .slot-grid, .two-sides, .why-grid { grid-template-columns: 1fr; }
+  .keyword-row { flex-direction: column; }
+  .keyword-row input { width: 100%; }
+  .concept-grid { grid-template-columns: 1fr 1fr; }
+  .final-template { font-size: 1rem; line-height: 2.6; }
+  .final-template .fill { min-width: 90px; }
+}
+
+/* 터치 대상 최소 크기 보장 */
+.choice { min-height: 48px; }
+input, textarea { font-size: 16px; } /* iOS 자동 확대 방지 */

@@ -1,5 +1,5 @@
 /* =========================================================================
-   전쟁 예언자 — 앱 로직
+   전쟁 예언자 — 앱 로직 (모바일 최적화: 탭 기반 상호작용 + OSM 지도)
    화면 라우팅 · 5개 미션 · 힌트 · 점수 · 종합 활동
    ========================================================================= */
 
@@ -15,21 +15,18 @@
   const toastEl = document.getElementById("toast");
   document.getElementById("homeBtn").addEventListener("click", () => go("prologue"));
 
-  // 미션 4점 * 5 = 20점
   const MISSION_KEYS = ["mission1", "mission2", "mission3", "mission4", "mission5"];
   const SCREENS = ["prologue", ...MISSION_KEYS, "epilogue", "result"];
 
-  // 진행 상태
   const state = {
     current: "prologue",
-    scores: {},          // { mission1: 4, ... }  각 미션 획득 점수
-    hintsUsed: {},       // { mission1: 2, ... }
-    solved: {},          // { mission1: true }
-    answers: {},         // { mission2: { who:"..." }, ... }  학생이 입력/선택한 답안
+    scores: {},
+    hintsUsed: {},
+    solved: {},
+    answers: {},
   };
 
   // ---------- localStorage 저장/복원 ----------
-  // 학생 노트북 브라우저 안에만 저장됩니다(서버 전송 없음).
   const STORE_KEY = "war-prophet-progress-v1";
 
   function saveState() {
@@ -44,11 +41,8 @@
           current: state.current,
         })
       );
-    } catch (e) {
-      /* 시크릿 모드 등 저장 불가 환경은 조용히 무시 */
-    }
+    } catch (e) {}
   }
-
   function loadState() {
     try {
       const raw = localStorage.getItem(STORE_KEY);
@@ -59,11 +53,8 @@
       state.solved = saved.solved || {};
       state.answers = saved.answers || {};
       state.current = saved.current || "prologue";
-    } catch (e) {
-      /* 손상된 데이터면 무시하고 새로 시작 */
-    }
+    } catch (e) {}
   }
-
   function clearStore() {
     try { localStorage.removeItem(STORE_KEY); } catch (e) {}
     state.scores = {};
@@ -71,8 +62,6 @@
     state.solved = {};
     state.answers = {};
   }
-
-  // 특정 미션의 답안 저장/조회
   function saveAnswer(missionKey, obj) {
     state.answers[missionKey] = Object.assign({}, state.answers[missionKey], obj);
     saveState();
@@ -100,7 +89,7 @@
     toastEl.textContent = msg;
     toastEl.classList.add("show");
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => toastEl.classList.remove("show"), 2200);
+    toast._t = setTimeout(() => toastEl.classList.remove("show"), 2400);
   }
   function totalScore() {
     return Object.values(state.scores).reduce((a, b) => a + b, 0);
@@ -111,10 +100,7 @@
 
   // ---------- 상단 진행 표시 ----------
   function renderTopbar() {
-    if (state.current === "prologue") {
-      topbar.hidden = true;
-      return;
-    }
+    if (state.current === "prologue") { topbar.hidden = true; return; }
     topbar.hidden = false;
     stepNav.innerHTML = "";
     MISSION_KEYS.forEach((mk, i) => {
@@ -122,7 +108,6 @@
       dot.textContent = i + 1;
       if (state.solved[mk]) dot.classList.add("done");
       if (state.current === mk) dot.classList.add("current");
-      // 이미 푼 미션이나 바로 다음 미션까지만 이동 허용
       const idx = MISSION_KEYS.indexOf(state.current);
       const reachable = state.solved[mk] || i <= idx;
       dot.disabled = !reachable;
@@ -153,9 +138,7 @@
       result: renderResult,
     }[screen])();
   }
-  function nextScreen(cur) {
-    return SCREENS[SCREENS.indexOf(cur) + 1];
-  }
+  function nextScreen(cur) { return SCREENS[SCREENS.indexOf(cur) + 1]; }
 
   // ---------- 공통: 미션 머리글 ----------
   function missionHeader(m) {
@@ -176,20 +159,17 @@
     box.appendChild(el("p", "tiny muted", "힌트를 열 때마다 이 미션의 예언 점수가 1점씩 줄어듭니다. 점수보다 스스로 추론하는 과정이 더 중요합니다."));
     const list = el("ul", "hint-list");
     box.appendChild(list);
-
     const row = el("div", "hint-btn-row");
     const btn = el("button", "btn btn-ghost", "힌트 열기 →");
     row.appendChild(btn);
     box.appendChild(row);
 
     let shown = 0;
-    // 이미 쓴 힌트 복원
     for (let i = 0; i < state.hintsUsed[key]; i++) {
       list.appendChild(el("li", null, `💡 ${esc(m.hints[i])}`));
       shown++;
     }
     updateBtn();
-
     btn.addEventListener("click", () => {
       if (shown >= m.hints.length) return;
       list.appendChild(el("li", null, `💡 ${esc(m.hints[shown])}`));
@@ -200,17 +180,12 @@
       updateBtn();
     });
     function updateBtn() {
-      if (shown >= m.hints.length) {
-        btn.disabled = true;
-        btn.textContent = "힌트를 모두 열었어요";
-      } else {
-        btn.textContent = `힌트 열기 (${shown}/${m.hints.length}) →`;
-      }
+      if (shown >= m.hints.length) { btn.disabled = true; btn.textContent = "힌트를 모두 열었어요"; }
+      else { btn.textContent = `힌트 열기 (${shown}/${m.hints.length}) →`; }
     }
     return box;
   }
 
-  // ---------- 공통: 점수 계산 (힌트당 -1, 최소 1점) ----------
   function scoreFor(missionKey, base) {
     const used = state.hintsUsed[missionKey] || 0;
     return Math.max(1, base - used);
@@ -242,7 +217,6 @@
     return p;
   }
 
-  // ---------- 공통: 다음으로 버튼 ----------
   function nextButton(cur, label) {
     const wrap = el("div", "actions");
     wrap.appendChild(el("div", "spacer"));
@@ -250,6 +224,141 @@
     btn.addEventListener("click", () => go(nextScreen(cur)));
     wrap.appendChild(btn);
     return wrap;
+  }
+
+  /* =======================================================================
+     공통 상호작용 헬퍼 (탭/터치 기반, 드래그 없음)
+     ======================================================================= */
+
+  // 탭 분류: 카드를 탭해 선택 → 목표 상자를 탭해 담기. 담긴 카드를 탭하면 풀로 복귀.
+  // items: [{id, html}]  zones: [{key, label}]  onChange(): 상태 변화 콜백
+  // 반환: { getPlacement(): {id: zoneKey|null}, placeAll(map), lock() }
+  function tapClassifier(host, items, zones, opts) {
+    opts = opts || {};
+    let selectedId = null;
+    let locked = false;
+    const placement = {}; // id -> zoneKey (없으면 풀)
+    items.forEach((it) => (placement[it.id] = null));
+
+    const pool = el("div", "tap-pool");
+    const poolTitle = el("p", "pool-hint", opts.poolHint || "① 아래 카드를 하나 탭해 고르고 ② 담을 상자를 탭하세요.");
+    host.appendChild(poolTitle);
+    host.appendChild(pool);
+
+    const zoneWrap = el("div", "tap-zones");
+    const zoneEls = {};
+    zones.forEach((z) => {
+      const box = el("div", "tap-zone " + (z.cls || ""));
+      box.appendChild(el("h4", null, z.label));
+      const inner = el("div", "tap-zone-items");
+      box.appendChild(inner);
+      zoneEls[z.key] = { box, inner };
+      box.addEventListener("click", () => {
+        if (locked) return;
+        if (!selectedId) { toast("먼저 위에서 카드를 하나 탭해 고르세요."); return; }
+        placement[selectedId] = z.key;
+        selectedId = null;
+        render();
+        if (opts.onChange) opts.onChange();
+      });
+      zoneWrap.appendChild(box);
+    });
+    host.appendChild(zoneWrap);
+
+    function makeCard(it, inZone) {
+      const c = el("div", "tap-card" + (inZone ? " placed" : "") + (selectedId === it.id ? " selected" : ""));
+      c.innerHTML = it.html;
+      c.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (locked) return;
+        if (inZone) {
+          // 담긴 카드를 탭 → 풀로 복귀
+          placement[it.id] = null;
+          selectedId = null;
+          render();
+          if (opts.onChange) opts.onChange();
+        } else {
+          selectedId = selectedId === it.id ? null : it.id;
+          render();
+        }
+      });
+      return c;
+    }
+    function render() {
+      pool.innerHTML = "";
+      Object.values(zoneEls).forEach((z) => (z.inner.innerHTML = ""));
+      items.forEach((it) => {
+        const z = placement[it.id];
+        if (z && zoneEls[z]) zoneEls[z].inner.appendChild(makeCard(it, true));
+        else pool.appendChild(makeCard(it, false));
+      });
+      if (pool.children.length === 0) pool.appendChild(el("p", "tiny muted", "모든 카드를 분류했어요. 담긴 카드를 탭하면 다시 꺼낼 수 있어요."));
+    }
+    render();
+
+    return {
+      getPlacement: () => Object.assign({}, placement),
+      placeAll: (map) => { Object.keys(map).forEach((id) => (placement[id] = map[id])); render(); },
+      lock: () => { locked = true; render(); poolTitle.textContent = opts.lockedHint || "제출 완료 — 분류가 잠겼습니다."; },
+    };
+  }
+
+  // 탭 순서 배열: 위/아래 버튼으로 순서를 바꾸는 리스트. 모바일에서 안정적.
+  // cards: [{id, text, order}]
+  // 반환: { getOrderIds(), markResult(), lock(), setOrder(ids) }
+  function tapOrderList(host, cards) {
+    let locked = false;
+    let arr = cards.slice(); // 현재 표시 순서
+    const listEl = el("div", "order-list");
+    host.appendChild(listEl);
+
+    function move(i, dir) {
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      render();
+    }
+    function render() {
+      listEl.innerHTML = "";
+      arr.forEach((c, i) => {
+        const it = el("div", "order-item" + (c._ok ? " ok" : "") + (c._bad ? " bad" : ""));
+        it.appendChild(el("span", "num", String(i + 1)));
+        it.appendChild(el("span", "txt", esc(c.text)));
+        if (!locked) {
+          const ctrl = el("div", "order-ctrl");
+          const up = el("button", "ord-btn", "▲");
+          up.setAttribute("aria-label", "위로");
+          up.disabled = i === 0;
+          up.addEventListener("click", () => move(i, -1));
+          const dn = el("button", "ord-btn", "▼");
+          dn.setAttribute("aria-label", "아래로");
+          dn.disabled = i === arr.length - 1;
+          dn.addEventListener("click", () => move(i, 1));
+          ctrl.appendChild(up); ctrl.appendChild(dn);
+          it.appendChild(ctrl);
+        }
+        listEl.appendChild(it);
+      });
+    }
+    render();
+
+    return {
+      getOrderIds: () => arr.map((c) => c.id),
+      markResult: () => {
+        let ok = 0;
+        arr.forEach((c, i) => { const good = c.order === i + 1; c._ok = good; c._bad = !good; if (good) ok++; });
+        render();
+        return ok;
+      },
+      lock: () => { locked = true; arr.forEach((c) => { c._ok = true; c._bad = false; }); render(); },
+      setOrder: (ids) => {
+        if (!ids || !ids.length) return;
+        arr = ids.map((id) => cards.find((c) => c.id === id)).filter(Boolean);
+        // 누락 방지
+        cards.forEach((c) => { if (!arr.includes(c)) arr.push(c); });
+        render();
+      },
+    };
   }
 
   /* =======================================================================
@@ -273,7 +382,6 @@
     const start = el("button", "btn btn-primary",
       hasProgress ? "이어서 예언하기 →" : "예언자의 임무 시작하기 →");
     start.addEventListener("click", () => {
-      // 이어서: 아직 풀지 않은 첫 미션으로 (모두 풀었으면 종합 활동)
       const firstUnsolved = MISSION_KEYS.find((k) => !state.solved[k]);
       const target = hasProgress ? (firstUnsolved || "epilogue") : "mission1";
       go(target);
@@ -309,248 +417,132 @@
   }
 
   /* =======================================================================
-     미션 1 — 지도 & 국가 분류 (드래그 앤 드롭)
+     미션 1 — OSM 지도 + 탭 분류
      ======================================================================= */
   function renderMission1() {
     const m = D.mission1;
     stage.appendChild(missionHeader(m));
 
+    // 지도 카드
+    const mapCard = el("div", "card");
+    mapCard.appendChild(el("h3", "serif", "🗺️ 1914년 유럽 지도"));
+    mapCard.appendChild(el("p", "muted", "실제 지도 위에 여섯 나라가 표시됩니다. 아래에서 분류하면 지도의 국가 색이 진영에 따라 바뀝니다."));
+    const mapDiv = el("div", "leaflet-map");
+    mapCard.appendChild(mapDiv);
+    stage.appendChild(mapCard);
+
+    let europe = null;
+    try { europe = MAPS.buildEurope(mapDiv); }
+    catch (e) { mapDiv.innerHTML = '<p class="tiny muted" style="padding:16px">지도를 불러오지 못했습니다. 인터넷 연결을 확인하세요. (분류 활동은 그대로 진행할 수 있어요.)</p>'; }
+
+    // 분류 카드
     const card = el("div", "card");
-    card.appendChild(el("p", null, "아래 여섯 나라의 특징을 읽고, <b>두 진영</b>으로 나누어 보세요. 카드를 아래의 두 상자로 끌어다 놓으면 됩니다."));
+    card.appendChild(el("p", null, "여섯 나라의 특징을 읽고 <b>두 진영</b>으로 나누세요."));
 
-    const layout = el("div", "m1-layout");
-    // 유럽 SVG 지도 + 국가 이름 핀
-    const mapWrap = el("div", "map-wrap");
-    mapWrap.innerHTML = MAPS.europe();
-    m.countries.forEach((c) => {
-      const pin = el("div", "map-pin");
-      pin.dataset.id = c.id;
-      pin.style.left = c.pos.x + "%";
-      pin.style.top = c.pos.y + "%";
-      pin.innerHTML = `<div class="dot">${c.emoji}</div><div class="tag">${esc(c.name)}</div>`;
-      mapWrap.appendChild(pin);
+    const items = m.countries.map((c) => ({
+      id: c.id,
+      html: `<b>${c.emoji} ${esc(c.name)}</b><ul>${c.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>`,
+    }));
+    const zones = [
+      { key: "alliance", label: "🔴 진영 A", cls: "alliance" },
+      { key: "entente", label: "🔵 진영 B", cls: "entente" },
+    ];
+
+    const clf = tapClassifier(card, shuffleItems(items), zones, {
+      poolHint: "① 국가 카드를 탭해 고르고 ② 담을 진영 상자를 탭하세요. (담긴 카드를 다시 탭하면 꺼냅니다)",
+      onChange: () => paintMap(),
     });
-    const mapCol = el("div");
-    mapCol.appendChild(mapWrap);
-    mapCol.appendChild(el("p", "tiny muted", "🗺️ 국가를 분류하면 지도의 나라 영역이 진영 색으로 칠해집니다. (학습용 개략 지도)"));
-    // 지도 범례
-    const legend = el("div", "legend");
-    legend.innerHTML =
-      '<span><i style="background:#e2a19a"></i>진영 A</span>' +
-      '<span><i style="background:#9db8dc"></i>진영 B</span>' +
-      '<span><i style="background:#e6dcc0"></i>미분류</span>';
-    mapCol.appendChild(legend);
-    layout.appendChild(mapCol);
-
-    // 국가 카드 풀
-    const pool = el("div", "country-pool");
-    pool.appendChild(el("p", "pool-hint", "🖱️ 국가 카드를 아래 두 상자 중 하나로 끌어 놓으세요."));
-    const source = el("div", "pool-source dz-items");
-    source.dataset.zone = "source";
-    shuffle(m.countries).forEach((c) => source.appendChild(countryCard(c)));
-    pool.appendChild(source);
-    layout.appendChild(pool);
-    card.appendChild(layout);
-
-    // 드롭 존
-    const zones = el("div", "dropzones");
-    ["alliance", "entente"].forEach((g) => {
-      const dz = el("div", "dropzone " + g);
-      dz.dataset.zone = g;
-      dz.appendChild(el("h4", null, (g === "alliance" ? "🔴 " : "🔵 ") + "?  진영 " + (g === "alliance" ? "A" : "B")));
-      const items = el("div", "dz-items");
-      items.dataset.zone = g;
-      dz.appendChild(items);
-      zones.appendChild(dz);
-    });
-    card.appendChild(el("hr", "soft"));
-    card.appendChild(zones);
-
-    // 드래그 로직
-    enableDragDrop(card, () => updateM1Pins(card));
+    function shuffleItems(list) { return shuffle(list); }
+    function paintMap() {
+      if (!europe) return;
+      const pl = clf.getPlacement();
+      m.countries.forEach((c) => europe.setGroup(c.id, pl[c.id] || "none"));
+    }
 
     card.appendChild(hintBlock(m));
-
     const actions = el("div", "actions");
-    const check = el("button", "btn btn-primary", "이 분류로 예언하기");
     actions.appendChild(el("div", "spacer"));
+    const check = el("button", "btn btn-primary", "이 분류로 예언하기");
     actions.appendChild(check);
     card.appendChild(actions);
-
     const resultHost = el("div");
     card.appendChild(resultHost);
 
-    // 저장된 답안 복원: 각 국가를 저장된 진영 상자로 이동
-    function placeCountry(id, zone) {
-      const cardNode = card.querySelector(`.country-card[data-id="${id}"]`);
-      const target = card.querySelector(`.dz-items[data-zone="${zone}"]`);
-      if (cardNode && target) target.appendChild(cardNode);
-    }
-    function showM1Reveal() {
+    function showReveal() {
       const nameOf = (id) => m.countries.find((c) => c.id === id).name;
       resultHost.innerHTML = "";
-      resultHost.appendChild(
-        revealPanel({
-          verdict: "🎯 정확한 분류입니다!",
-          cls: "correct",
-          gained: state.scores.mission1,
-          blocks: [
-            { h: "삼국동맹", t: m.answer.alliance.map(nameOf).join(", ") },
-            { h: "삼국협상", t: m.answer.entente.map(nameOf).join(", ") },
-          ],
-          caution: m.caution,
-          prophecy: m.prophecy,
-        })
-      );
+      resultHost.appendChild(revealPanel({
+        verdict: "🎯 정확한 분류입니다!",
+        cls: "correct",
+        gained: state.scores.mission1,
+        blocks: [
+          { h: "삼국동맹", t: m.answer.alliance.map(nameOf).join(", ") },
+          { h: "삼국협상", t: m.answer.entente.map(nameOf).join(", ") },
+        ],
+        caution: m.caution,
+        prophecy: m.prophecy,
+      }));
       resultHost.appendChild(nextButton("mission1"));
     }
 
-    const saved1 = getAnswer("mission1");
-    if (state.solved.mission1 && saved1.alliance && saved1.entente) {
-      saved1.alliance.forEach((id) => placeCountry(id, "alliance"));
-      saved1.entente.forEach((id) => placeCountry(id, "entente"));
-      updateM1Pins(card);
+    // 복원
+    if (state.solved.mission1) {
+      const map = {};
+      m.answer.alliance.forEach((id) => (map[id] = "alliance"));
+      m.answer.entente.forEach((id) => (map[id] = "entente"));
+      clf.placeAll(map);
+      clf.lock();
+      paintMap();
       check.disabled = true;
-      showM1Reveal();
+      showReveal();
     }
 
     check.addEventListener("click", () => {
-      const alliance = [...card.querySelectorAll('[data-zone="alliance"] .country-card')].map((n) => n.dataset.id);
-      const entente = [...card.querySelectorAll('[data-zone="entente"] .country-card')].map((n) => n.dataset.id);
-      if (alliance.length + entente.length < m.countries.length) {
-        toast("아직 분류하지 않은 국가가 있어요.");
-        return;
-      }
+      const pl = clf.getPlacement();
+      const alliance = Object.keys(pl).filter((id) => pl[id] === "alliance");
+      const entente = Object.keys(pl).filter((id) => pl[id] === "entente");
+      if (alliance.length + entente.length < m.countries.length) { toast("아직 분류하지 않은 국가가 있어요."); return; }
       const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
       const correct =
         (same(alliance, m.answer.alliance) && same(entente, m.answer.entente)) ||
         (same(alliance, m.answer.entente) && same(entente, m.answer.alliance));
-
-      if (!correct) {
-        toast("두 진영이 완전히 맞지는 않아요. 힌트를 참고해 다시 나눠 보세요.");
-        return;
-      }
+      if (!correct) { toast("두 진영이 완전히 맞지는 않아요. 힌트를 참고해 다시 나눠 보세요."); return; }
       check.disabled = true;
+      clf.lock();
       state.solved.mission1 = true;
-      const gained = scoreFor("mission1", 4);
-      state.scores.mission1 = gained;
-      // 정답 기준으로 저장(복원 시 항상 올바르게 배치)
+      state.scores.mission1 = scoreFor("mission1", 4);
       saveAnswer("mission1", { alliance: m.answer.alliance, entente: m.answer.entente });
       renderTopbar();
-      showM1Reveal();
+      showReveal();
       resultHost.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
     stage.appendChild(card);
-
-    function countryCard(c) {
-      const node = el("div", "country-card");
-      node.draggable = true;
-      node.dataset.id = c.id;
-      node.innerHTML =
-        `<h4>${c.emoji} ${esc(c.name)}</h4><ul>${c.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>`;
-      return node;
-    }
-  }
-
-  function updateM1Pins(card) {
-    const m = D.mission1;
-    // card 하위에서 찾되, 아직 stage에 붙기 전(복원 시)에도 동작하도록 card 우선 탐색
-    const scope = card || stage;
-    m.countries.forEach((c) => {
-      const pin = scope.querySelector(`.map-pin[data-id="${c.id}"]`);
-      const land = scope.querySelector(`.geo-map .land[data-country="${c.id}"]`);
-      if (pin) pin.classList.remove("alliance", "entente");
-      if (land) land.classList.remove("alliance", "entente");
-      const inZone = card.querySelector(`.dz-items[data-zone] .country-card[data-id="${c.id}"]`);
-      if (inZone) {
-        const z = inZone.closest("[data-zone]").dataset.zone;
-        if (z === "alliance" || z === "entente") {
-          if (pin) pin.classList.add(z);
-          if (land) land.classList.add(z);
-        }
-      }
-    });
-  }
-
-  // 범용 드래그앤드롭 (카드 <-> 존)
-  function enableDragDrop(root, onChange) {
-    let dragEl = null;
-    root.addEventListener("dragstart", (e) => {
-      const t = e.target.closest("[draggable]");
-      if (!t) return;
-      dragEl = t;
-      t.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    });
-    root.addEventListener("dragend", () => {
-      if (dragEl) dragEl.classList.remove("dragging");
-      dragEl = null;
-      root.querySelectorAll(".over").forEach((z) => z.classList.remove("over"));
-    });
-    root.querySelectorAll("[data-zone]").forEach((zone) => {
-      const target = zone.classList.contains("dz-items") ? zone : zone.querySelector(".dz-items") || zone;
-      zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
-      zone.addEventListener("dragleave", () => zone.classList.remove("over"));
-      zone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        zone.classList.remove("over");
-        if (dragEl) {
-          target.appendChild(dragEl);
-          if (onChange) onChange();
-        }
-      });
-    });
   }
 
   /* =======================================================================
-     미션 2 — 사라예보 사건 예언 (단계 힌트 + 예언 틀)
+     미션 2 — OSM 발칸 지도 + 프로파일러 추리 + 예언
      ======================================================================= */
   function renderMission2() {
     const m = D.mission2;
     stage.appendChild(missionHeader(m));
 
-    // ---- 프로파일러 보드: 지도 + 단계별 단서 ----
     const boardCard = el("div", "card");
     boardCard.appendChild(el("h3", "serif", "🕵️ 사건 프로파일링 보드"));
-    boardCard.appendChild(el("p", "muted", "실마리를 한 단계씩 열 때마다 지도의 관련 지역이 강조됩니다. 흐름을 정리하며 다음에 벌어질 사건을 추리하세요."));
+    boardCard.appendChild(el("p", "muted", "실마리를 한 단계씩 열 때마다 발칸반도 지도의 관련 지역이 강조됩니다."));
+    const mapDiv = el("div", "leaflet-map");
+    boardCard.appendChild(mapDiv);
 
-    const profiler = el("div", "profiler");
+    let balkans = null;
+    try { balkans = MAPS.buildBalkans(mapDiv); }
+    catch (e) { mapDiv.innerHTML = '<p class="tiny muted" style="padding:16px">지도를 불러오지 못했습니다. 인터넷 연결을 확인하세요.</p>'; }
 
-    // 왼쪽: 발칸 지도
-    const mapCol = el("div");
-    const balkanWrap = el("div", "balkan-map-wrap");
-    balkanWrap.innerHTML = MAPS.balkans();
-    mapCol.appendChild(balkanWrap);
-    const legend = el("div", "legend");
-    legend.innerHTML =
-      '<span><i style="background:#d9c48f"></i>오스트리아-헝가리</span>' +
-      '<span><i style="background:#e7b98c"></i>보스니아</span>' +
-      '<span><i style="background:#cdb0d4"></i>세르비아</span>' +
-      '<span><i style="background:#b9d0a6"></i>오스만 제국</span>';
-    mapCol.appendChild(legend);
-    profiler.appendChild(mapCol);
-
-    // 오른쪽: 단서 트랙
-    const clueCol = el("div");
     const clueTrack = el("div", "clue-track");
-    clueCol.appendChild(clueTrack);
+    boardCard.appendChild(clueTrack);
     const openBtn = el("button", "btn btn-gold", "첫 번째 단서 열기 →");
     const br = el("div", "actions"); br.appendChild(openBtn);
-    clueCol.appendChild(br);
-    profiler.appendChild(clueCol);
-    boardCard.appendChild(profiler);
+    boardCard.appendChild(br);
     stage.appendChild(boardCard);
-
-    function clearHighlights() {
-      boardCard.querySelectorAll(".geo-map.balkans .region.highlight").forEach((r) => r.classList.remove("highlight"));
-    }
-    function highlight(regions) {
-      (regions || []).forEach((rg) => {
-        const node = boardCard.querySelector(`.geo-map.balkans .region[data-region="${rg}"]`);
-        if (node) node.classList.add("highlight");
-      });
-    }
 
     let opened = 0;
     function renderStage() {
@@ -562,30 +554,26 @@
       step.appendChild(ul);
       if (s.deduce) step.appendChild(el("div", "deduce-note", "🧩 " + esc(s.deduce)));
       clueTrack.appendChild(step);
-      clearHighlights();
-      highlight(s.highlight);
+      if (balkans) balkans.highlight(s.highlight);
       opened++;
-      if (opened >= m.clueStages.length) {
-        openBtn.disabled = true;
-        openBtn.textContent = "모든 단서를 확인했어요";
-      } else {
-        openBtn.textContent = `다음 단서 열기 (${opened}/${m.clueStages.length}) →`;
-      }
+      if (opened >= m.clueStages.length) { openBtn.disabled = true; openBtn.textContent = "모든 단서를 확인했어요"; }
+      else openBtn.textContent = `다음 단서 열기 (${opened}/${m.clueStages.length}) →`;
     }
     openBtn.addEventListener("click", renderStage);
-    renderStage(); // 첫 단계 자동 공개
+    renderStage();
 
-    // ---- 프로파일러 지목: 표적 인물 찾기 ----
+    // 표적 지목
     const culCard = el("div", "card");
     culCard.appendChild(el("h3", "serif", "🎯 프로파일러의 지목"));
     culCard.appendChild(el("p", "muted", esc(m.culprit.question)));
     const cList = el("div", "choice-list");
     let pickedCulprit = null;
+    let culpritLocked = false;
     m.culprit.options.forEach((o) => {
       const b = el("button", "choice", esc(o.text));
       b.dataset.id = o.id;
       b.addEventListener("click", () => {
-        if (pickedCulprit && pickedCulprit.locked) return;
+        if (culpritLocked) return;
         cList.querySelectorAll(".choice").forEach((n) => n.classList.remove("selected"));
         b.classList.add("selected");
         pickedCulprit = o;
@@ -596,7 +584,7 @@
     culCard.appendChild(cList);
     stage.appendChild(culCard);
 
-    // ---- 예언 기록장 ----
+    // 예언 기록장
     const predCard = el("div", "card");
     predCard.appendChild(el("h3", "serif", "✍️ 나의 예언 기록장"));
     predCard.appendChild(el("p", "muted", "지금까지 정리한 흐름을 종합해 다음 칸을 채워 예언을 완성하세요."));
@@ -605,9 +593,7 @@
     m.predictionSlots.forEach((s) => {
       const slot = el("div", "slot");
       slot.appendChild(el("label", null, esc(s.label)));
-      const inp = el("input");
-      inp.type = "text";
-      inp.placeholder = s.placeholder;
+      const inp = el("input"); inp.type = "text"; inp.placeholder = s.placeholder;
       inp.addEventListener("input", () => saveAnswer("mission2", { [s.key]: inp.value }));
       slot.appendChild(inp);
       inputs[s.key] = inp;
@@ -615,7 +601,6 @@
     });
     predCard.appendChild(grid);
     predCard.appendChild(hintBlock(m));
-
     const actions = el("div", "actions");
     actions.appendChild(el("div", "spacer"));
     const submit = el("button", "btn btn-primary", "예언 제출하기");
@@ -624,93 +609,63 @@
     const resultHost = el("div");
     predCard.appendChild(resultHost);
 
-    // 채점 + 결과 표시 (제출/복원 공용)
     function finalize(scroll) {
-      pickedCulprit.locked = true;
+      culpritLocked = true;
       submit.disabled = true;
-      inputs && Object.values(inputs).forEach((i) => (i.disabled = true));
-
+      Object.values(inputs).forEach((i) => (i.disabled = true));
       cList.querySelectorAll(".choice").forEach((n) => {
         const o = m.culprit.options.find((x) => x.id === n.dataset.id);
         n.classList.remove("selected");
         if (o.correct) n.classList.add("correct");
         else if (n.dataset.id === pickedCulprit.id) n.classList.add("wrong");
       });
-
       const vals = {};
       Object.keys(inputs).forEach((k) => (vals[k] = inputs[k].value.trim()));
       let hit = 0;
-      Object.keys(m.keywords).forEach((k) => {
-        if (m.keywords[k].some((w) => vals[k].includes(w))) hit++;
-      });
+      Object.keys(m.keywords).forEach((k) => { if (m.keywords[k].some((w) => vals[k].includes(w))) hit++; });
       const total = Object.keys(m.keywords).length;
-
-      const spark = boardCard.querySelector(".geo-map.balkans .spark");
-      const cityLbl = boardCard.querySelector(".geo-map.balkans .city-label");
-      if (spark) spark.classList.add("show");
-      if (cityLbl) cityLbl.classList.add("show");
-      clearHighlights();
-      highlight(["bosnia"]);
-
+      if (balkans) balkans.showSarajevo();
       const matched = pickedCulprit.correct && hit === total;
       resultHost.innerHTML = "";
-      resultHost.appendChild(
-        revealPanel({
-          verdict: matched
-            ? "🎯 사라예보 사건을 정확히 예언했습니다!"
-            : `🔎 예언 완료 · 표적 ${pickedCulprit.correct ? "적중" : "오답"} · 예언 단서 ${hit}/${total}개 적중`,
-          cls: matched ? "correct" : "partial",
-          gained: state.scores.mission2,
-          blocks: [
-            { h: "프로파일러 결론", t: esc(pickedCulprit.correct ? m.culprit.feedbackRight : m.culprit.feedbackWrong) },
-            { h: "실제로 일어난 사건", t: esc(m.answerEvent) },
-            { h: "역사 해설", t: esc(m.explanation) },
-          ],
-          caution: m.caution,
-          prophecy: m.prophecy,
-        })
-      );
+      resultHost.appendChild(revealPanel({
+        verdict: matched ? "🎯 사라예보 사건을 정확히 예언했습니다!"
+          : `🔎 예언 완료 · 표적 ${pickedCulprit.correct ? "적중" : "오답"} · 예언 단서 ${hit}/${total}개 적중`,
+        cls: matched ? "correct" : "partial",
+        gained: state.scores.mission2,
+        blocks: [
+          { h: "프로파일러 결론", t: esc(pickedCulprit.correct ? m.culprit.feedbackRight : m.culprit.feedbackWrong) },
+          { h: "실제로 일어난 사건", t: esc(m.answerEvent) },
+          { h: "역사 해설", t: esc(m.explanation) },
+        ],
+        caution: m.caution,
+        prophecy: m.prophecy,
+      }));
       resultHost.appendChild(nextButton("mission2"));
       if (scroll) resultHost.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    // 저장된 답안 복원
+    // 복원
     const saved2 = getAnswer("mission2");
     if (saved2.culprit) {
       const o = m.culprit.options.find((x) => x.id === saved2.culprit);
       const b = cList.querySelector(`.choice[data-id="${saved2.culprit}"]`);
       if (o && b) { pickedCulprit = o; b.classList.add("selected"); }
     }
-    Object.keys(inputs).forEach((k) => {
-      if (typeof saved2[k] === "string") inputs[k].value = saved2[k];
-    });
-    if (state.solved.mission2 && pickedCulprit) {
-      finalize(false);
-    }
+    Object.keys(inputs).forEach((k) => { if (typeof saved2[k] === "string") inputs[k].value = saved2[k]; });
+    if (state.solved.mission2 && pickedCulprit) finalize(false);
 
     submit.addEventListener("click", () => {
-      if (!pickedCulprit) {
-        toast("먼저 위쪽 '프로파일러의 지목'에서 표적 인물을 골라 주세요.");
-        return;
-      }
+      if (!pickedCulprit) { toast("먼저 위쪽 '프로파일러의 지목'에서 표적 인물을 골라 주세요."); return; }
       const vals = {};
       Object.keys(inputs).forEach((k) => (vals[k] = inputs[k].value.trim()));
-      if (Object.values(vals).some((v) => v.length === 0)) {
-        toast("예언 기록장 네 칸을 모두 채워야 제출할 수 있어요.");
-        return;
-      }
-
-      // 채점하여 점수 저장
+      if (Object.values(vals).some((v) => v.length === 0)) { toast("예언 기록장 네 칸을 모두 채워야 제출할 수 있어요."); return; }
       let hit = 0;
-      Object.keys(m.keywords).forEach((k) => {
-        if (m.keywords[k].some((w) => vals[k].includes(w))) hit++;
-      });
+      Object.keys(m.keywords).forEach((k) => { if (m.keywords[k].some((w) => vals[k].includes(w))) hit++; });
       const total = Object.keys(m.keywords).length;
       state.solved.mission2 = true;
       const culpritScore = pickedCulprit.correct ? 1 : 0;
       const predScore = Math.round((hit / total) * 3);
-      const base = Math.max(2, culpritScore + predScore);
-      state.scores.mission2 = scoreFor("mission2", base);
+      state.scores.mission2 = scoreFor("mission2", Math.max(2, culpritScore + predScore));
       saveAnswer("mission2", { culprit: pickedCulprit.id });
       renderTopbar();
       finalize(true);
@@ -720,45 +675,33 @@
   }
 
   /* =======================================================================
-     미션 3 — 증거 분류 + 핵심어 찾기
+     미션 3 — 탭 분류 + 키워드
      ======================================================================= */
   function renderMission3() {
     const m = D.mission3;
     stage.appendChild(missionHeader(m));
 
     const card = el("div", "card");
-    card.appendChild(el("p", null, "전쟁의 여러 모습을 <b>두 범주</b>로 나눈 뒤, 이 전쟁을 대표하는 <b>두 개의 키워드</b>를 찾아내세요."));
+    card.appendChild(el("p", null, "전쟁의 여러 모습을 <b>두 범주</b>로 나눈 뒤, 이 전쟁을 대표하는 <b>두 키워드</b>를 찾아내세요."));
 
-    const source = el("div", "sort-pool dz-items");
-    source.dataset.zone = "source";
-    shuffle(m.evidence).forEach((ev) => source.appendChild(eviChip(ev)));
-    card.appendChild(source);
-    card.appendChild(el("hr", "soft"));
-
-    const cats = el("div", "sort-cats");
-    Object.keys(m.categories).forEach((cat) => {
-      const c = m.categories[cat];
-      const dz = el("div", "dropzone");
-      dz.dataset.zone = cat;
-      dz.appendChild(el("h4", null, c.icon + " " + esc(c.label)));
-      const items = el("div", "dz-items");
-      items.dataset.zone = cat;
-      dz.appendChild(items);
-      cats.appendChild(dz);
+    const items = m.evidence.map((ev) => ({ id: ev.id, html: `<span>${esc(ev.text)}</span>` }));
+    const zones = Object.keys(m.categories).map((cat) => ({
+      key: cat, label: m.categories[cat].icon + " " + m.categories[cat].label,
+    }));
+    const clf = tapClassifier(card, shuffle(items), zones, {
+      poolHint: "① 카드를 탭해 고르고 ② 담을 범주를 탭하세요.",
     });
-    card.appendChild(cats);
-    enableDragDrop(card, null);
 
-    // 키워드 입력
     card.appendChild(el("hr", "soft"));
     const kf = el("div", "field");
     kf.appendChild(el("label", null, "🗝️ 이 전쟁을 대표하는 두 키워드는?"));
+    // 상시(바로 보이는) 힌트 — 설명을 덧붙이고 ㅁㅁ전 표기
     kf.appendChild(el("p", "tiny muted",
-      "힌트: 첫 번째는 병사들이 땅을 파고 버티는 도랑 '참호'와 관련된 '참□전', " +
-      "두 번째는 나라의 모든 힘을 쏟는 '총□전'입니다."));
+      "힌트: 첫 번째는 병사들이 땅을 파고 버티는 도랑 '참호'와 관련된 <b>ㅁㅁ전</b>, " +
+      "두 번째는 나라의 모든 힘을 쏟아붓는 <b>ㅁㅁ전</b>입니다."));
     const krow = el("div", "keyword-row");
-    const k1 = el("input"); k1.type = "text"; k1.placeholder = "참 □ 전 (땅을 파고 대치)";
-    const k2 = el("input"); k2.type = "text"; k2.placeholder = "총 □ 전 (나라 전체를 동원)";
+    const k1 = el("input"); k1.type = "text"; k1.placeholder = "ㅁㅁ전 (땅을 파고 대치)";
+    const k2 = el("input"); k2.type = "text"; k2.placeholder = "ㅁㅁ전 (나라 전체를 동원)";
     k1.addEventListener("input", () => saveAnswer("mission3", { k1: k1.value }));
     k2.addEventListener("input", () => saveAnswer("mission3", { k2: k2.value }));
     krow.appendChild(k1); krow.appendChild(k2);
@@ -766,7 +709,6 @@
     card.appendChild(kf);
 
     card.appendChild(hintBlock(m));
-
     const actions = el("div", "actions");
     actions.appendChild(el("div", "spacer"));
     const submit = el("button", "btn btn-primary", "분류와 키워드 확인하기");
@@ -775,88 +717,68 @@
     const resultHost = el("div");
     card.appendChild(resultHost);
 
-    function showM3Reveal(scroll) {
+    function showReveal(scroll) {
       const saved = getAnswer("mission3");
       const sortOk = typeof saved.sortOk === "number" ? saved.sortOk : m.evidence.length;
-      submit.disabled = true;
-      k1.disabled = true; k2.disabled = true;
+      submit.disabled = true; k1.disabled = true; k2.disabled = true;
+      clf.lock();
       resultHost.innerHTML = "";
-      resultHost.appendChild(
-        revealPanel({
-          verdict: `🎯 두 키워드를 찾았습니다! (분류 정확도 ${sortOk}/${m.evidence.length})`,
-          cls: "correct",
-          gained: state.scores.mission3,
-          blocks: [
-            { h: "참호전", t: esc(m.concepts["참호전"]) },
-            { h: "총력전", t: esc(m.concepts["총력전"]) },
-          ],
-          caution: m.caution,
-          prophecy: m.prophecy,
-        })
-      );
+      resultHost.appendChild(revealPanel({
+        verdict: `🎯 두 키워드를 찾았습니다! (분류 정확도 ${sortOk}/${m.evidence.length})`,
+        cls: "correct",
+        gained: state.scores.mission3,
+        blocks: [
+          { h: "참호전", t: esc(m.concepts["참호전"]) },
+          { h: "총력전", t: esc(m.concepts["총력전"]) },
+        ],
+        caution: m.caution,
+        prophecy: m.prophecy,
+      }));
       resultHost.appendChild(nextButton("mission3"));
       if (scroll) resultHost.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    // 저장된 답안 복원
     const saved3 = getAnswer("mission3");
     if (typeof saved3.k1 === "string") k1.value = saved3.k1;
     if (typeof saved3.k2 === "string") k2.value = saved3.k2;
-    if (state.solved.mission3) showM3Reveal(false);
+    // 분류 복원(정답 배치)
+    if (state.solved.mission3) {
+      const map = {}; m.evidence.forEach((ev) => (map[ev.id] = ev.cat));
+      clf.placeAll(map);
+      showReveal(false);
+    }
 
     submit.addEventListener("click", () => {
-      // 분류 채점
+      const pl = clf.getPlacement();
+      const placedCount = Object.values(pl).filter((v) => v).length;
+      if (placedCount < m.evidence.length) { toast("아직 분류하지 않은 카드가 있어요."); return; }
       let sortOk = 0;
-      m.evidence.forEach((ev) => {
-        const node = card.querySelector(`.chip[data-id="${ev.id}"]`);
-        const z = node.closest("[data-zone]").dataset.zone;
-        if (z === ev.cat) sortOk++;
-      });
-      const allSorted = card.querySelector('[data-zone="source"]').children.length === 0;
-      if (!allSorted) { toast("아직 분류하지 않은 카드가 있어요."); return; }
-
-      // 키워드 채점
+      m.evidence.forEach((ev) => { if (pl[ev.id] === ev.cat) sortOk++; });
       const answers = [k1.value.trim(), k2.value.trim()];
       const found = m.keywordTargets.map((t) => answers.some((a) => t.accept.some((w) => a.includes(w))));
-      const keyHit = found.filter(Boolean).length;
-
-      if (keyHit < 2) {
-        toast("두 키워드를 아직 다 찾지 못했어요. 힌트를 참고해 보세요.");
-        return;
-      }
+      if (found.filter(Boolean).length < 2) { toast("두 키워드를 아직 다 찾지 못했어요. 힌트를 참고해 보세요."); return; }
       state.solved.mission3 = true;
-      // 4점: 키워드 2점 + 분류 정확도 2점
       const sortScore = sortOk === m.evidence.length ? 2 : sortOk >= m.evidence.length - 2 ? 1 : 0;
-      const base = 2 + sortScore;
-      state.scores.mission3 = scoreFor("mission3", base);
-      saveAnswer("mission3", { sortOk: sortOk });
+      state.scores.mission3 = scoreFor("mission3", 2 + sortScore);
+      saveAnswer("mission3", { sortOk });
       renderTopbar();
-      showM3Reveal(true);
+      showReveal(true);
     });
 
     stage.appendChild(card);
-
-    function eviChip(ev) {
-      const chip = el("div", "chip");
-      chip.draggable = true;
-      chip.dataset.id = ev.id;
-      chip.innerHTML = `<span>${esc(ev.text)}</span>`;
-      return chip;
-    }
   }
 
   /* =======================================================================
-     미션 4 — 인과 카드 순서 배열
+     미션 4 — 학습 카드 + 탭 순서 배열
      ======================================================================= */
   function renderMission4() {
     const m = D.mission4;
     stage.appendChild(missionHeader(m));
 
-    // ---- 학습 카드: 미국은 왜 참전했고, 독일은 왜 휴전했나 ----
     const learnCard = el("div", "card");
     learnCard.appendChild(el("h3", "serif", "📚 먼저 알아보기: 전쟁이 끝난 이유"));
     learnCard.appendChild(el("p", "muted", "순서를 배열하기 전에, 미국이 왜 참전했고 독일이 왜 휴전했는지 먼저 읽어 보세요."));
-    const why = D.mission4.whyLearning;
+    const why = m.whyLearning;
     const whyGrid = el("div", "why-grid");
     const usa = el("div", "why-card");
     usa.appendChild(el("h5", null, why.usa.title));
@@ -869,19 +791,13 @@
     stage.appendChild(learnCard);
 
     const card = el("div", "card");
-    card.appendChild(el("p", null, "이제 전쟁이 끝나는 흐름이 뒤섞여 있습니다. 카드를 끌어 올바른 <b>시간·인과 순서</b>로 배열하세요."));
-
-    const list = el("div", "order-list");
-    // 이미 완료한 경우 정답 순서로 표시, 아니면 섞어서 표시
+    card.appendChild(el("p", null, "전쟁이 끝나는 흐름이 뒤섞여 있습니다. ▲▼ 버튼으로 올바른 <b>시간·인과 순서</b>로 배열하세요."));
     const arrangement = state.solved.mission4
       ? m.causeCards.slice().sort((a, b) => a.order - b.order)
       : shuffle(m.causeCards);
-    arrangement.forEach((c) => list.appendChild(orderItem(c)));
-    card.appendChild(list);
-    enableSortList(list);
+    const orderer = tapOrderList(card, arrangement);
 
     card.appendChild(hintBlock(m));
-
     const actions = el("div", "actions");
     actions.appendChild(el("div", "spacer"));
     const submit = el("button", "btn btn-primary", "순서 확인하기");
@@ -890,92 +806,40 @@
     const resultHost = el("div");
     card.appendChild(resultHost);
 
-    function showM4Reveal(scroll) {
-      const nodes = [...list.querySelectorAll(".order-item")];
-      nodes.forEach((n, i) => { n.classList.add("ok"); n.draggable = false; n.querySelector(".num").textContent = i + 1; });
+    function showReveal(scroll) {
       submit.disabled = true;
+      orderer.lock();
       resultHost.innerHTML = "";
-      resultHost.appendChild(
-        revealPanel({
-          verdict: "🎯 종전의 흐름을 정확히 배열했습니다!",
-          cls: "correct",
-          gained: state.scores.mission4,
-          blocks: [{ h: "역사 해설", t: esc(m.explanation) }],
-          caution: m.caution,
-          prophecy: m.prophecy,
-        })
-      );
+      resultHost.appendChild(revealPanel({
+        verdict: "🎯 종전의 흐름을 정확히 배열했습니다!",
+        cls: "correct",
+        gained: state.scores.mission4,
+        blocks: [{ h: "역사 해설", t: esc(m.explanation) }],
+        caution: m.caution,
+        prophecy: m.prophecy,
+      }));
       resultHost.appendChild(nextButton("mission4"));
       if (scroll) resultHost.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    if (state.solved.mission4) showM4Reveal(false);
+    if (state.solved.mission4) showReveal(false);
 
     submit.addEventListener("click", () => {
-      const nodes = [...list.querySelectorAll(".order-item")];
-      let ok = 0;
-      nodes.forEach((n, i) => {
-        const correct = Number(n.dataset.order) === i + 1;
-        n.classList.toggle("ok", correct);
-        n.classList.toggle("bad", !correct);
-        n.querySelector(".num").textContent = i + 1;
-        if (correct) ok++;
-      });
-      if (ok !== nodes.length) {
-        toast(`${ok}/${nodes.length} 위치가 맞아요. 초록색은 맞고 빨간색은 자리를 옮겨 보세요.`);
-        return;
-      }
+      const ok = orderer.markResult();
+      const totalN = m.causeCards.length;
+      if (ok !== totalN) { toast(`${ok}/${totalN} 위치가 맞아요. 초록색은 맞고 빨간색은 자리를 옮겨 보세요.`); return; }
       state.solved.mission4 = true;
       state.scores.mission4 = scoreFor("mission4", 4);
       saveState();
       renderTopbar();
-      showM4Reveal(true);
+      showReveal(true);
     });
 
     stage.appendChild(card);
-
-    function orderItem(c) {
-      const it = el("div", "order-item");
-      it.draggable = true;
-      it.dataset.order = c.order;
-      it.innerHTML = `<span class="num">·</span><span class="txt">${esc(c.text)}</span><span class="grip">⋮⋮</span>`;
-      return it;
-    }
-  }
-
-  // 리스트 내부 순서 재배열 드래그
-  function enableSortList(list) {
-    let dragEl = null;
-    list.addEventListener("dragstart", (e) => {
-      dragEl = e.target.closest(".order-item");
-      if (dragEl) dragEl.classList.add("dragging");
-    });
-    list.addEventListener("dragend", () => {
-      if (dragEl) { dragEl.classList.remove("dragging"); dragEl = null; }
-    });
-    list.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      const after = getAfter(list, e.clientY);
-      if (!dragEl) return;
-      if (after == null) list.appendChild(dragEl);
-      else list.insertBefore(dragEl, after);
-    });
-    function getAfter(container, y) {
-      const items = [...container.querySelectorAll(".order-item:not(.dragging)")];
-      return items.reduce(
-        (closest, child) => {
-          const box = child.getBoundingClientRect();
-          const offset = y - box.top - box.height / 2;
-          if (offset < 0 && offset > closest.offset) return { offset, element: child };
-          return closest;
-        },
-        { offset: -Infinity, element: null }
-      ).element;
-    }
   }
 
   /* =======================================================================
-     미션 5 — 베르사유 체제 평가 (선택형 + 양면 제시)
+     미션 5 — 베르사유 평가 (선택형 + 근거)
      ======================================================================= */
   function renderMission5() {
     const m = D.mission5;
@@ -1020,7 +884,6 @@
     qCard.appendChild(reason);
 
     qCard.appendChild(hintBlock(m));
-
     const actions = el("div", "actions");
     actions.appendChild(el("div", "spacer"));
     const submit = el("button", "btn btn-primary", "예언 제출하기");
@@ -1030,8 +893,7 @@
     qCard.appendChild(resultHost);
 
     function finalize5(scroll) {
-      submit.disabled = true;
-      ta.disabled = true;
+      submit.disabled = true; ta.disabled = true;
       choiceList.querySelectorAll(".choice").forEach((n) => {
         const ch = m.choices.find((c) => c.id === n.dataset.id);
         n.classList.remove("selected");
@@ -1039,22 +901,19 @@
         else if (n.dataset.id === picked.id) n.classList.add("wrong");
       });
       resultHost.innerHTML = "";
-      resultHost.appendChild(
-        revealPanel({
-          verdict: picked.correct ? "🎯 가장 균형 잡힌 예언입니다!" : "🔎 예언 제출 완료 · 다른 관점도 살펴보세요",
-          cls: picked.correct ? "correct" : "partial",
-          gained: state.scores.mission5,
-          blocks: [{ h: "역사 해설", t: esc(m.explanation) }],
-          twoSides: m.twoSides,
-          caution: m.caution,
-          prophecy: m.prophecy,
-        })
-      );
+      resultHost.appendChild(revealPanel({
+        verdict: picked.correct ? "🎯 가장 균형 잡힌 예언입니다!" : "🔎 예언 제출 완료 · 다른 관점도 살펴보세요",
+        cls: picked.correct ? "correct" : "partial",
+        gained: state.scores.mission5,
+        blocks: [{ h: "역사 해설", t: esc(m.explanation) }],
+        twoSides: m.twoSides,
+        caution: m.caution,
+        prophecy: m.prophecy,
+      }));
       resultHost.appendChild(nextButton("mission5", "종합 활동으로 →"));
       if (scroll) resultHost.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    // 저장된 답안 복원
     const saved5 = getAnswer("mission5");
     if (typeof saved5.reason === "string") ta.value = saved5.reason;
     if (saved5.choice) {
@@ -1070,8 +929,7 @@
       state.solved.mission5 = true;
       const pickScore = picked.correct ? 2 : 1;
       const reasonScore = ta.value.trim().length >= 15 ? 2 : 1;
-      const base = pickScore + reasonScore;
-      state.scores.mission5 = scoreFor("mission5", base);
+      state.scores.mission5 = scoreFor("mission5", pickScore + reasonScore);
       saveAnswer("mission5", { choice: picked.id, reason: ta.value });
       renderTopbar();
       finalize5(true);
@@ -1081,7 +939,7 @@
   }
 
   /* =======================================================================
-     종합 활동 — 사건 배열 + 최종 예언문
+     종합 활동 — 사건 배열 + 원인·결과 사슬(참여) + 최종 예언문
      ======================================================================= */
   function renderEpilogue() {
     const e = D.epilogue;
@@ -1092,60 +950,51 @@
     head.appendChild(el("p", "mission-goal", "지금까지의 예언을 하나로 엮어 제1차 세계대전의 흐름을 완성하세요."));
     stage.appendChild(head);
 
-    // 활동 1: 사건 시간순 배열
+    // 활동 1: 사건 시간순 배열 (탭 ▲▼)
     const tCard = el("div", "card");
     tCard.appendChild(el("h3", "serif", "① 사건 카드 시간순 배열"));
-    tCard.appendChild(el("p", "muted", "아홉 개의 사건을 일어난 순서대로 배열하세요."));
-    const tList = el("div", "order-list");
-    shuffle(e.timelineCards).forEach((c) => {
-      const it = el("div", "order-item");
-      it.draggable = true;
-      it.dataset.order = c.order;
-      it.innerHTML = `<span class="num">·</span><span class="txt">${esc(c.text)}</span><span class="grip">⋮⋮</span>`;
-      tList.appendChild(it);
-    });
-    tCard.appendChild(tList);
-    enableSortList(tList);
+    tCard.appendChild(el("p", "muted", "아홉 개의 사건을 일어난 순서대로 ▲▼ 버튼으로 배열하세요."));
+    const tOrderer = tapOrderList(tCard, shuffle(e.timelineCards));
     const tActions = el("div", "actions");
     tActions.appendChild(el("div", "spacer"));
     const tCheck = el("button", "btn btn-gold", "순서 확인");
     tActions.appendChild(tCheck);
     tCard.appendChild(tActions);
     tCheck.addEventListener("click", () => {
-      const nodes = [...tList.querySelectorAll(".order-item")];
-      let ok = 0;
-      nodes.forEach((n, i) => {
-        const correct = Number(n.dataset.order) === i + 1;
-        n.classList.toggle("ok", correct);
-        n.classList.toggle("bad", !correct);
-        n.querySelector(".num").textContent = i + 1;
-        if (correct) ok++;
-      });
-      if (ok === nodes.length) toast("완벽해요! 전쟁의 흐름을 모두 맞췄습니다 🎉");
-      else toast(`${ok}/${nodes.length} 위치가 맞아요. 다시 정렬해 보세요.`);
+      const ok = tOrderer.markResult();
+      const n = e.timelineCards.length;
+      if (ok === n) toast("완벽해요! 전쟁의 흐름을 모두 맞췄습니다 🎉");
+      else toast(`${ok}/${n} 위치가 맞아요. 다시 정렬해 보세요.`);
     });
     stage.appendChild(tCard);
 
-    // 활동 2: 인과 연결 (읽기 자료)
+    // 활동 2: 원인과 결과 사슬 (학생 참여 — 탭 ▲▼)
     const cCard = el("div", "card");
-    cCard.appendChild(el("h3", "serif", "② 원인과 결과의 사슬"));
-    const chain = [
-      "동맹 대립과 민족주의",
-      "한 지역의 분쟁이 국제전으로 확대",
-      "전쟁 장기화",
-      "총력전과 민간인 동원",
-      "사회·경제적 피로 누적",
-      "미국 참전과 동맹국 붕괴",
-      "전쟁 종결",
-      "불안정한 평화",
-    ];
-    const chainWrap = el("div", "evidence-grid");
-    chain.forEach((c, i) => {
-      const box = el("div", "evi");
-      box.innerHTML = `${i + 1}. ${esc(c)} ${i < chain.length - 1 ? "⬇️" : "🏁"}`;
-      chainWrap.appendChild(box);
+    cCard.appendChild(el("h3", "serif", "② 원인과 결과의 사슬 잇기"));
+    cCard.appendChild(el("p", "muted", esc(e.causalChain.intro)));
+    const cOrderer = tapOrderList(cCard, shuffle(e.causalChain.cards));
+    const cActions = el("div", "actions");
+    cActions.appendChild(el("div", "spacer"));
+    const cCheck = el("button", "btn btn-gold", "사슬 확인");
+    cActions.appendChild(cCheck);
+    cCard.appendChild(cActions);
+    const cOut = el("div");
+    cCard.appendChild(cOut);
+    cCheck.addEventListener("click", () => {
+      const ok = cOrderer.markResult();
+      const n = e.causalChain.cards.length;
+      cOut.innerHTML = "";
+      if (ok === n) {
+        cOrderer.lock();
+        const done = el("div", "reveal correct");
+        done.appendChild(el("div", "verdict", "🎯 원인과 결과의 사슬을 완성했습니다!"));
+        const flow = e.causalChain.cards.slice().sort((a, b) => a.order - b.order).map((c) => c.text).join("  →  ");
+        done.appendChild(el("div", "prophecy-line", flow));
+        cOut.appendChild(done);
+      } else {
+        toast(`${ok}/${n} 칸이 맞아요. 초록색은 맞고 빨간색은 자리를 옮겨 보세요.`);
+      }
     });
-    cCard.appendChild(chainWrap);
     stage.appendChild(cCard);
 
     // 활동 3: 최종 예언문
@@ -1154,20 +1003,18 @@
     fCard.appendChild(el("p", "muted", "빈칸을 채워 나만의 예언 보고서를 완성하세요. 비워 두면 추천 답이 자동으로 들어갑니다."));
 
     const tmpl = e.finalTemplate;
-    const parts = tmpl.text.split(/\{(\d+)\}/); // 문자, 인덱스, 문자, 인덱스...
+    const parts = tmpl.text.split(/\{(\d+)\}/);
     const tmplWrap = el("div", "final-template serif");
     const fills = [];
     parts.forEach((p, i) => {
-      if (i % 2 === 0) {
-        tmplWrap.appendChild(document.createTextNode(p));
-      } else {
+      if (i % 2 === 0) tmplWrap.appendChild(document.createTextNode(p));
+      else {
         const idx = Number(p);
         const inp = el("input", "fill");
         inp.type = "text";
         inp.placeholder = tmpl.blanks[idx].hint;
         inp.dataset.suggest = tmpl.blanks[idx].suggest;
         inp.dataset.blankIdx = idx;
-        // 저장된 값 복원
         const savedEp = getAnswer("epilogue");
         if (savedEp.blanks && typeof savedEp.blanks[idx] === "string") inp.value = savedEp.blanks[idx];
         inp.addEventListener("input", () => {
@@ -1186,52 +1033,48 @@
     fActions.appendChild(el("div", "spacer"));
     fActions.appendChild(build);
     fCard.appendChild(fActions);
-
     const out = el("div");
     fCard.appendChild(out);
 
     build.addEventListener("click", () => {
-      // 각 빈칸 채점: 입력이 accept 키워드 중 하나라도 포함하면 정답
-      const results = fills.map((f, i) => {
-        const raw = f.value.trim();
+      const raws = fills.map((f) => f.value.trim());
+      const swapGroups = tmpl.swapGroups || [];
+      // 채점: accept 키워드 포함 여부. swapGroups는 그룹 내 답을 모아 필요한 키워드가 모두 채워졌는지로 판정.
+      const results = raws.map((raw, i) => {
         const blank = tmpl.blanks[i];
         const accept = blank.accept || [blank.suggest];
         const ok = raw.length > 0 && accept.some((w) => raw.includes(w));
         return { raw, ok, blank };
       });
+      // swapGroups 보정: 그룹 내 칸들이 '서로 바뀌어도' 모두 정답이 되도록,
+      // 그룹에 필요한 정답 키워드 집합이 그룹 입력들로 모두 충족되면 그룹 전체를 정답 처리.
+      swapGroups.forEach((group) => {
+        const need = group.map((gi) => tmpl.blanks[gi].suggest); // 예: ["참호전","총력전"]
+        const groupInputs = group.map((gi) => raws[gi]);
+        const covered = need.every((word) => {
+          const core = word.replace("전", ""); // "참호","총력"
+          return groupInputs.some((v) => v.includes(core));
+        });
+        if (covered) group.forEach((gi) => (results[gi].ok = true));
+      });
 
-      // 보고서 본문은 정답인 칸은 학생 답, 오답/빈칸은 추천 정답으로 채움
       let text = tmpl.text;
-      results.forEach((r, i) => {
-        const filled = r.ok ? r.raw : r.blank.suggest;
-        text = text.replace(`{${i}}`, filled);
-      });
-
-      // 입력칸에 정답/오답 색 표시
-      fills.forEach((f, i) => {
-        f.classList.remove("ok-fill", "wrong-fill");
-        f.classList.add(results[i].ok ? "ok-fill" : "wrong-fill");
-      });
+      results.forEach((r, i) => { text = text.replace(`{${i}}`, r.ok && r.raw ? r.raw : r.blank.suggest); });
+      fills.forEach((f, i) => { f.classList.remove("ok-fill", "wrong-fill"); f.classList.add(results[i].ok ? "ok-fill" : "wrong-fill"); });
 
       out.innerHTML = "";
       const correctCount = results.filter((r) => r.ok).length;
-
       const report = el("div", "report-out");
-      report.textContent =
-        "🕯️ 전쟁 예언자의 최종 보고서\n\n" + text + "\n\n— " + e.coreMessage;
+      report.textContent = "🕯️ 전쟁 예언자의 최종 보고서\n\n" + text + "\n\n— " + e.coreMessage;
       out.appendChild(report);
-
-      // 채점 요약
       out.appendChild(el("p", null, `<b>${correctCount}/${results.length}</b> 칸을 스스로 맞혔어요.`));
 
-      // 틀리거나 비운 칸이 있으면 정답을 알려 준다
       const wrong = results.filter((r) => !r.ok);
       if (wrong.length > 0) {
         const fix = el("div", "answer-fix");
         fix.appendChild(el("div", null, "📌 아래 칸은 이렇게 채우면 정확해요:"));
-        const ul = el("ul");
-        ul.style.margin = "8px 0 0";
-        results.forEach((r, i) => {
+        const ul = el("ul"); ul.style.margin = "8px 0 0";
+        results.forEach((r) => {
           if (!r.ok) {
             const yours = r.raw.length ? `내 답: “${esc(r.raw)}”` : "내 답: (비어 있음)";
             ul.appendChild(el("li", null, `<b>${esc(r.blank.hint)}</b> → 정답 예시: <b>${esc(r.blank.suggest)}</b> <span class="tiny muted">(${yours})</span>`));
@@ -1242,7 +1085,6 @@
       } else {
         out.appendChild(el("div", "answer-fix", "🎉 모든 칸을 정확히 채웠습니다. 완벽한 예언 보고서예요!"));
       }
-
       out.appendChild(nextButton("epilogue", "예언 결과 확인하기 →"));
       out.scrollIntoView({ behavior: "smooth", block: "center" });
     });
@@ -1269,7 +1111,6 @@
     hero.appendChild(el("p", "muted", esc(comment)));
     stage.appendChild(hero);
 
-    // 미션별 점수표
     const tbl = el("div", "card");
     tbl.appendChild(el("h3", "serif", "🗂️ 미션별 예언 기록"));
     MISSION_KEYS.forEach((mk) => {
@@ -1286,10 +1127,7 @@
 
     const actions = el("div", "actions");
     const again = el("button", "btn btn-ghost", "처음부터 다시 예언하기 ↺");
-    again.addEventListener("click", () => {
-      clearStore();
-      go("prologue");
-    });
+    again.addEventListener("click", () => { clearStore(); go("prologue"); });
     const review = el("button", "btn btn-primary", "미션 1부터 다시 보기");
     review.addEventListener("click", () => go("mission1"));
     actions.appendChild(again);
@@ -1300,6 +1138,5 @@
 
   // ---------- 시작 ----------
   loadState();
-  // 항상 프롤로그에서 시작하되, 저장된 진행이 있으면 '이어서 예언하기'가 표시됩니다.
   go("prologue");
 })();
