@@ -656,7 +656,19 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 }
 .tap-card h4, .tap-card b { display: block; margin: 0 0 4px; }
 .tap-card ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.88rem; color: var(--ink-soft); }
-.tap-card.placed { background: #fff; border-style: solid; }
+
+/* 분류 상자에 담긴 카드: 여백을 줄이고 늘어나지 않게 (설명 목록은 숨겨 컴팩트하게) */
+.tap-card.placed {
+  background: #fff;
+  border-style: solid;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 8px 12px;
+  min-height: 0;
+  font-size: 0.9rem;
+}
+.tap-card.placed ul { display: none; }
+.tap-card.placed h4, .tap-card.placed b { margin: 0; }
 
 /* 탭 분류: 목표 상자 */
 .tap-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
