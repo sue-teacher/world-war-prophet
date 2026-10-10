@@ -781,15 +781,15 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
    반응형 (모바일)
    ========================================================================= */
 @media (max-width: 640px) {
-  .stage { padding: 16px 12px 72px; }
-  .card { padding: 18px 16px; }
+  .stage { padding: 16px 20px 72px; }
+  .card { padding: 20px 18px; }
   .mission-title { font-size: 1.5rem; }
-  .hero { padding: 34px 18px; }
-  .hero::before { inset: 9px; }
+  .hero { padding: 34px 20px; }
+  .hero::before { inset: 11px; }
   .hero h1 { font-size: 2rem; }
   .hero .seal { font-size: 3.4rem; }
   .hero p.lead { font-size: 1rem; }
-  .topbar-inner { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
+  .topbar-inner { padding: 8px 16px; gap: 8px; flex-wrap: wrap; }
   .brand { font-size: 0.95rem; }
   .step-dot { width: 28px; height: 28px; }
   .leaflet-map { height: 260px; }
@@ -806,10 +806,10 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 
 /* 소형 폰(≤420px) 세부 조정 */
 @media (max-width: 420px) {
-  .stage { padding: 14px 10px 68px; }
-  .card { padding: 16px 14px; }
-  .hero { padding: 28px 14px; }
-  .hero::before { inset: 7px; }
+  .stage { padding: 14px 16px 68px; }
+  .card { padding: 18px 16px; }
+  .hero { padding: 28px 18px; }
+  .hero::before { inset: 10px; }
   .hero h1 { font-size: 1.68rem; }
   .hero .seal { font-size: 3rem; }
   .hero .subtitle { font-size: 0.72rem; letter-spacing: .1em; }
