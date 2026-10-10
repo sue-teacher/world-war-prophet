@@ -232,6 +232,8 @@ h1, h2, h3 { line-height: 1.3; }
 .hero .subtitle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   color: var(--red);
   font-weight: 700;
@@ -782,8 +784,11 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   .stage { padding: 16px 12px 72px; }
   .card { padding: 18px 16px; }
   .mission-title { font-size: 1.5rem; }
+  .hero { padding: 34px 18px; }
+  .hero::before { inset: 9px; }
   .hero h1 { font-size: 2rem; }
-  .hero { padding: 26px 16px; }
+  .hero .seal { font-size: 3.4rem; }
+  .hero p.lead { font-size: 1rem; }
   .topbar-inner { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
   .brand { font-size: 0.95rem; }
   .step-dot { width: 28px; height: 28px; }
@@ -797,6 +802,39 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   .concept-grid { grid-template-columns: 1fr 1fr; }
   .final-template { font-size: 1rem; line-height: 2.6; }
   .final-template .fill { min-width: 90px; }
+}
+
+/* 소형 폰(≤420px) 세부 조정 */
+@media (max-width: 420px) {
+  .stage { padding: 14px 10px 68px; }
+  .card { padding: 16px 14px; }
+  .hero { padding: 28px 14px; }
+  .hero::before { inset: 7px; }
+  .hero h1 { font-size: 1.68rem; }
+  .hero .seal { font-size: 3rem; }
+  .hero .subtitle { font-size: 0.72rem; letter-spacing: .1em; }
+  .hero .subtitle::before, .hero .subtitle::after { width: 16px; }
+  .mission-title { font-size: 1.32rem; }
+  /* 개념 카드: 소형폰에서는 1열로 쌓아 가독성 확보 */
+  .concept-grid { grid-template-columns: 1fr; }
+  /* 상단 진행 점: 줄바꿈 대신 가로 스크롤로 한 줄 유지 */
+  .steps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step-dot { flex: 0 0 auto; }
+  .score-badge { padding: 4px 10px; font-size: 0.9rem; }
+}
+
+/* 터치 조작용 최소 타깃: 순서 배열 ▲▼ 버튼 */
+@media (hover: none) and (pointer: coarse) {
+  .ord-btn { width: 44px; height: 44px; }
+  .tap-card { min-height: 48px; }
+  .tap-zone { min-height: 110px; }
 }
 
 /* 터치 대상 최소 크기 보장 */
