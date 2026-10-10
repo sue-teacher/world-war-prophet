@@ -37,6 +37,26 @@ body {
     linear-gradient(160deg, #efe4c8 0%, #e6d7b4 100%);
   background-attachment: fixed;
   line-height: 1.7;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 콘텐츠 무대가 남는 공간을 채워 푸터를 바닥에 고정 */
+.stage {
+  flex: 1 0 auto;
+}
+
+/* 모든 화면 하단 공통 문구 */
+.site-footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 18px 16px;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--parchment, #f3ead3);
+  background: linear-gradient(180deg, #26231f, #1c1a17);
+  border-top: 2px solid var(--gold, #b8860b);
 }
 
 .serif { font-family: "Gowun Batang", "Noto Sans KR", serif; }
