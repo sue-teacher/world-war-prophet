@@ -501,7 +501,7 @@
     const hero = el("div", "card hero");
     hero.appendChild(el("div", "seal", "🕯️"));
     hero.appendChild(el("div", "subtitle", "제1차 세계대전 · 세계사 탐구"));
-    hero.appendChild(el("h1", "serif", "전쟁 예언자"));
+    hero.appendChild(el("h1", "serif", "표선 전쟁 예언자"));
     hero.appendChild(el("div", "year-chip", esc(p.year)));
     hero.appendChild(el("p", "lead", esc(p.intro)));
     hero.appendChild(el("p", "lead", esc(p.mission)));
